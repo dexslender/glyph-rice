@@ -1,0 +1,44 @@
+# Niri migration rules
+
+Goal: migrate this Hyprland-based Quickshell rice ("Glyph") to the niri compositor with the smallest possible diff. These rules apply to every phase.
+
+## Hard rules
+
+- MINIMAL DIFF. Do not refactor, rename, restyle, or "improve" anything unrelated to the migration.
+- NEVER install packages and NEVER add a dependency. Use only what is listed under "Available". If a feature cannot work with those tools, disable it cleanly (guard it, hide its UI and keybind) and state the limitation in the task result. Do not substitute a package that is not listed.
+- Work on the git branch `niri`. Do not delete or modify Hyprland files; add niri support alongside them. Only touch Hyprland-specific code in QML/scripts where niri needs it.
+- Do not invent niri KDL syntax. Consult the official niri wiki (github.com/niri-wm/niri/wiki) for every config block, and validate with `niri validate -c config/niri/config.kdl`. Never run commands that alter the live session.
+- Do only the phase I ask for, then STOP and report.
+
+## Available (assume present)
+
+niri 26.04, quickshell, swayidle, gammastep, iwd + iwgtk (`iwctl`), TLP (battery tuning only, NOT used for power profiles), bluez, upower, brightnessctl, playerctl, libnotify, lxqt-policykit, xdg-desktop-portal-lxqt/-gtk/-wlr (screencast uses xdg-desktop-portal-wlr; do not touch portal config), gpu-screen-recorder, swappy, jq, curl, python3, libqalculate, wl-clipboard, cliphist, geoclue, kitty, fish, starship, fastfetch, btop, cava, eza, zoxide. Login manager is Ly (not SDDM). qml-niri (QML module "Niri", already installed).
+
+## NOT available
+
+direnv, hypridle, hyprsunset, hyprpicker, xdg-desktop-portal-hyprland, NetworkManager, power-profiles-daemon, grim, slurp, polkit-gnome, gnome-keyring, sddm, papirus-icon-theme, adw-gtk-theme, Bibata, qtengine, darkly, JetBrains Nerd Font, noto fonts, Clash Verge.
+
+## Replacement table
+
+- hypridle -> swayidle (idle timeouts currently set by the settings/idle code)
+- hyprsunset -> gammastep (night light)
+- hyprpicker -> `niri msg pick-color`
+- Screenshots (grim/slurp) -> `niri msg action screenshot` / `screenshot-screen` / `screenshot-window`. Shot module: remove its own region selection and editor; optionally add an "edit" action using `swappy -f`. Recording stays on gpu-screen-recorder, full screen/monitor only (no region selection).
+- NetworkManager / Quickshell.Networking (NetworkManager-only backend) -> do not use. Network tiles/panels either launch `iwgtk` or read state via `iwctl` through a Process. Choose the smaller change per file.
+- polkit-gnome -> `lxqt-policykit-agent`. Remove gnome-keyring autostart.
+- Hyprland workspaces / active window / events / keyboard layout in QML -> the installed `qml-niri` plugin (`import Niri`): `Niri {}` with `connect()`, models `workspaces` and `windows`, `focusedWindow`, `keyboardLayouts`, `overview`, and actions like `focusWorkspaceById`. Wrap ONE instance in a singleton services/Niri.qml; all other QML consumes it. Filter workspaces by `output` per screen, and use `workspaces.maxCount` where the bar showed a fixed number. Use `sendRawAction` only for actions without a typed wrapper. Do NOT parse `niri msg event-stream` yourself and do NOT write a new IPC client.
+- Hyprland global shortcuts (`shell:*`) -> Quickshell `IpcHandler` targets, triggered from niri binds as `spawn "qs" "-c" "glyph" "ipc" "call" <target> <function>`.
+- direnv in fish config -> guard with `type -q direnv`.
+
+## Disable cleanly (no dead UI, no dead keybinds)
+
+- VPN module and its keybind.
+- Login / SDDM theme (skip `--sddm`, leave config/sddm untouched).
+- GTK / Qt / icon-folder / cursor theme propagation (Theme.qml and the `rice` script: skip Papirus folders, qtengine, GTK css, cursor).
+- Special workspaces (todo / music / editor binds).
+- Power profile controls (any selector in Quick/Deck using power-profiles-daemon or the PowerProfiles D-Bus API). Do not use tlpctl or tlp-pd. Battery level and charging state (UPower) stay.
+- Game mode, and any setting in settings/Rules.qml that required a live `hyprctl keyword` (motion, input, monitor, ultra mode), unless a niri IPC action exists for it.
+
+## Blur
+
+niri 26.04 supports native blur via `background-effect { blur true }` inside `window-rule` and `layer-rule` (wiki: "Window Effects", "Configuration: Layer Rules"). Where the Hyprland config applied blur (decoration.lua, layer rules for shell namespaces), reproduce it with layer-rules matching the Glyph namespaces. Keep it conservative: only surfaces that had blur in Hyprland, and easy to turn off.

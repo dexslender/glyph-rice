@@ -88,56 +88,20 @@ Singleton {
     // kitty: include-файл с цветами палитры (kitty.conf подключает его), SIGUSR1 — перечитать конфиг
     FileView { id: kitty; path: root.dir + "/kitty.conf"; printErrors: false }
 
-    function hypr(lua) { Quickshell.execDetached(["hyprctl", "eval", lua]); }
+    function monitor() {}
 
-    // монитор не зашит, как в caelestia: из hyprctl monitors — встроенный (eDP), а нет его — первый; родной режим — самый
-    // большой из его режимов, частоты — те, что у родного. ponytail: настройки на один экран, остальные — по строке в hyprland.lua
     property var mon: ({ name: "", w: 0, h: 0, scale: 1, rates: [] })
-    property bool monWanted: false // monitor() позвали раньше, чем пришёл ответ hyprctl
-    Process {
-        id: monProc
-        running: true
-        command: ["hyprctl", "monitors", "-j"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const all = JSON.parse(text), m = all.find(x => x.name.startsWith("eDP")) ?? all[0];
-                if (!m) return;
-                const modes = m.availableModes.map(s => /(\d+)x(\d+)@([\d.]+)/.exec(s)).filter(Boolean).map(r => [+r[1], +r[2], Math.round(+r[3])]);
-                const [w, h] = modes.reduce((a, b) => b[0] * b[1] > a[0] * a[1] ? b : a, [m.width, m.height]);
-                const rates = [...new Set(modes.filter(r => r[0] === w && r[1] === h).map(r => r[2]))].sort((a, b) => a - b);
-                root.mon = { name: m.name, w, h, scale: m.scale, rates: rates.length ? rates : [Math.round(m.refreshRate)] };
-                if (root.monWanted) root.monitor();
-            }
-        }
-    }
-    // auto — масштаб выбирает hypr; какой вышел, узнаём, перечитав мониторы
-    Timer { id: monReread; interval: 500; onTriggered: monProc.running = true }
-    function monitor() {
-        if (!mon.name) { monWanted = true; return; }
-        monWanted = false;
-        hypr(`hl.monitor({ output = "${mon.name}", mode = "${mon.w}x${mon.h}@${hz}", position = "auto", scale = ${store.monScale || '"auto"'} })`);
-        monReread.restart();
-    }
     readonly property var rates: mon.rates.length ? mon.rates : [60, 120]
     readonly property int refreshHz: rates.reduce((a, b) => Math.abs(b - store.refresh) < Math.abs(a - store.refresh) ? b : a)
     readonly property real scale: store.monScale || mon.scale || 1 // что стоит на деле, и при auto
     readonly property var scales: ["auto", "1", "1.25", "1.5", "2"]
     readonly property int scaleIdx: store.monScale ? scales.indexOf(String(store.monScale)) : 0
     function setScale(i) { store.monScale = i ? +scales[i] : 0; monitor(); }
-    function windows() {
-        const s = store;
-        hypr(`hl.config({ general = { gaps_in = ${s.gapsIn}, gaps_out = ${s.gapsOut}, border_size = ${s.border} }, `
-           + `decoration = { rounding = ${s.rounding}, blur = { enabled = ${blurOn} }, shadow = { enabled = ${shadowOn} } } })`);
-    }
+    function windows() {}
     // ponytail: только вкл/выкл; slam/snap — переопределять кривые из animations.lua
-    function motion() { hypr(`hl.config({ animations = { enabled = ${moving} } })`); }
+    function motion() {}
     readonly property var switches: [["alt+shift", "grp:alt_shift_toggle"], ["caps", "grp:caps_toggle"], ["ctrl+shift", "grp:ctrl_shift_toggle"]]
-    function input() {
-        const s = store;
-        hypr(`hl.config({ input = { kb_options = "${switches[s.kbSwitch]?.[1] ?? switches[0][1]}", repeat_delay = ${s.repeatDelay}, repeat_rate = ${s.repeatRate}, `
-           + `sensitivity = ${s.sens / 100}, accel_profile = "${s.flat ? "flat" : "adaptive"}", touchpad = { natural_scroll = ${s.natural}, `
-           + `tap_to_click = ${s.tap}, disable_while_typing = ${s.typingOff}, scroll_factor = ${s.scroll / 100} } } })`);
-    }
+    function input() {}
     // гибернация есть не везде (нужен swap под resume, zram не годится) — спрашиваем logind. Нет — обычный сон, пункты
     // гибернации прячутся. Ответ пришёл после idle() — переписать конфиг (лок idle() не зовёт, его это не касается)
     property bool canHibernate: false
@@ -149,35 +113,22 @@ Singleton {
         command: ["busctl", "call", "org.freedesktop.login1", "/org/freedesktop/login1", "org.freedesktop.login1.Manager", "CanSuspendThenHibernate"]
         stdout: StdioCollector { onStreamFinished: root.canHibernate = text.includes('"yes"') }
     }
-    // hypridle конфиг на лету не перечитывает: пишем свой и перезапускаем. Тот же текст и hypridle жив — не трогаем,
-    // чтобы перезагрузка шелла не сбрасывала счётчик простоя. inhibit_sleep = 3 — сон ждёт, пока лок встанет (сам hypridle
-    // так ждёт только hyprlock): иначе лок засыпает недоподнятым, а на пробуждении мониторы моргают — монитор, пропавший
-    // в первые ~0.5 с жизни лока, роняет qs (#5)
     function idle() {
         idleDone = true;
-        const s = store, dpms = a => `hyprctl dispatch 'hl.dsp.dpms({action = "${a}"})'`;
-        const at = (min, on, back) => min ? `\nlistener {\n    timeout = ${min * 60}\n    on-timeout = ${on}${back ? `\n    on-resume = ${back}` : ""}\n}\n` : "";
-        const conf = "# demonshot: пишет Rules.idle() из rules.json, руками не править\n"
-            + "general {\n    lock_cmd = ~/.config/quickshell/rice/rice lock\n    inhibit_sleep = 3\n"
-            + `    before_sleep_cmd = loginctl lock-session\n    after_sleep_cmd = ${dpms("on")}\n}\n`
-            + at(s.lockAfter, "loginctl lock-session") + at(s.dpmsAfter, dpms("off"), dpms("on"))
-            + at(s.sleepAfter, hibernateOn ? "systemctl suspend-then-hibernate" : "systemctl suspend");
-        Quickshell.execDetached(["sh", "-c", 'f="$1/hypridle.conf"; printf %s "$2" | cmp -s - "$f" && pgrep -x hypridle >/dev/null && exit; '
-                                       + 'printf %s "$2" > "$f"; pkill -x hypridle; exec hypridle -c "$f"', "sh", dir, conf]);
+        const s = store;
+        const lock = s.lockAfter ? `timeout ${s.lockAfter * 60} '$HOME/.config/quickshell/rice/rice lock'` : "";
+        const dpms = s.dpmsAfter ? `timeout ${s.dpmsAfter * 60} 'niri msg action power-off-monitors' resume 'niri msg action power-on-monitors'` : "";
+        const sleep = s.sleepAfter ? `timeout ${s.sleepAfter * 60} '${hibernateOn ? "systemctl suspend-then-hibernate" : "systemctl suspend"}'` : "";
+        Quickshell.execDetached(["sh", "-c", `pkill -x swayidle 2>/dev/null; exec swayidle -w ${lock} ${dpms} ${sleep}`]);
     }
     function brightness() { Quickshell.execDetached(["brightnessctl", "-q", "set", store.brightness + "%"]); }
     function night() {
-        Quickshell.execDetached(["sh", "-c", store.night ? `pkill -x hyprsunset; exec hyprsunset -t ${store.warmth}` : "pkill -x hyprsunset"]);
+        Quickshell.execDetached(["sh", "-c", store.night ? `pkill -x gammastep 2>/dev/null; exec gammastep -O ${store.warmth}` : "pkill -x gammastep"]);
     }
 
     // палитра: Theme перекрашивается сам (биндинги на pal), здесь — то, что живёт вне шелла
     function paint() {
         const c = pal.c;
-        if (store.paintHypr) {
-            const h = c.map(x => x.slice(1));
-            hypr(`hl.config({ general = { col = { active_border = { colors = { "rgb(${h[5]})", "rgb(${h[4]})", "rgb(${h[5]})" }, angle = 135 }, `
-               + `inactive_border = "rgb(${h[2]})" } }, decoration = { shadow = { color = "rgba(${h[5]}20)" } } })`);
-        }
         if (store.paintKitty) {
             kitty.setText([
                 ["foreground", c[7]], ["background", c[1]], ["cursor", c[7]], ["cursor_text_color", c[1]],
@@ -193,22 +144,11 @@ Singleton {
     // режимы питания, как в caelestia: профиль power-profiles-daemon. ultra сверху — 60 Гц, без анимаций, blur и теней,
     // поверх своих настроек, не трогая их: вышел — вернулись. 0 ultra · 1 saver · 2 balanced · 3 performance.
     // Окна (blur, тени) применяет вызвавший: demonshot — windows(), glyph — Theme.apply() (windows() снял бы его скругление)
-    readonly property var modes: [
-        { name: "ultra", short: "ULT", what: `power saver · ${rates[0]} hz · still` },
-        { name: "saver", short: "ECO", what: "power saver" },
-        { name: "balanced", short: "BAL", what: "balanced" },
-        { name: "performance", short: "MAX", what: "performance" }
-    ]
-    readonly property int mode: store.ultra ? 0 : PowerProfiles.profile + 1
-    readonly property int modeCount: PowerProfiles.hasPerformanceProfile ? 4 : 3
+    readonly property var modes: [{ name: "ultra", short: "ULT", what: `ultra · ${rates[0]} hz · still` }]
+    readonly property int mode: 0
+    readonly property int modeCount: 1
     function setMode(i) {
-        i = Math.max(0, Math.min(modeCount - 1, i));
-        const hz0 = hz, moving0 = moving;
-        store.ultra = i === 0;
-        PowerProfiles.profile = i === 0 ? PowerProfile.PowerSaver : i - 1;
-        // монитор — только если герцы правда другие: перенастройка вывода мигает экраном и сбрасывает наведение (панели гаснут)
-        if (hz !== hz0) monitor();
-        if (moving !== moving0) motion();
+        store.ultra = true;
     }
     // что стоит на деле: ultra перекрывает настройки — самые низкие герцы экрана, иначе ближайшие к выбранным
     readonly property int hz: store.ultra ? rates[0] : refreshHz

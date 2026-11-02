@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Effects
 import Quickshell
-import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
 import qs
@@ -13,7 +12,7 @@ import qs.components
 Scope {
     id: root
 
-    readonly property var modes: ["region", "window", "screen", "record"]
+    readonly property var modes: ["screen", "record"]
     readonly property var delays: [0, 3, 13]
     readonly property string run: Quickshell.env("XDG_RUNTIME_DIR") || "/tmp"
 
@@ -21,16 +20,12 @@ Scope {
     property int delay: 0
     property string frozen: ""
     property var scr: null
-    // всё ниже — в пикселях макета (Stage); логические = × Theme.s, кадра — × k
-    property var wins: []       // окна текущего ws: { x, y, w, h }
-    property rect drag: Qt.rect(0, 0, 0, 0) // w = 0 — ничего не выбрано
+    property var wins: []
+    property rect drag: Qt.rect(0, 0, 0, 0)
     property real mx: 0
     property real my: 0
-    readonly property var hover: wins.find(w => mx >= w.x && mx < w.x + w.w && my >= w.y && my < w.y + w.h) ?? null
-    readonly property rect sel: mode === 2 ? Qt.rect(0, 0, stage.width, stage.height)
-        : mode === 1 ? (hover ? Qt.rect(hover.x, hover.y, hover.w, hover.h) : Qt.rect(0, 0, 0, 0))
-        : drag
-    readonly property real k: frozenImg.sourceSize.width / Math.max(1, stage.width)
+    readonly property real k: 1
+    readonly property rect sel: Qt.rect(0, 0, stage.width, stage.height)
 
     // последний выстрел: для вспышки и карточки
     property string shot: ""
@@ -41,76 +36,22 @@ Scope {
 
     function open() {
         if (aim.visible) return;
-        const mon = Hyprland.focusedMonitor;
-        scr = Quickshell.screens.find(s => s.name === mon?.name) ?? Quickshell.screens[0];
-        Hyprland.refreshToplevels();
-        picker.unloadImage(frozenImg.source); // холст держит кадр в памяти, пока не выгрузим
-        freeze.next = `${run}/glyph-frozen-${Date.now()}.ppm`; // ponytail: ppm без сжатия — grim 90 мс против 450 у png
-        freeze.exec(["sh", "-c", 'rm -f "$3"/glyph-frozen-*; grim -t ppm -o "$1" "$2" && echo ok', "sh", scr.name, freeze.next, run]);
+        scr = Quickshell.screens[0];
+        aim.shown = true;
     }
     function close() { aim.shown = false; }
 
     function fire() {
-        const r = sel.width > 2 && sel.height > 2 ? sel : Qt.rect(0, 0, stage.width, stage.height);
-        const full = r.width === stage.width && r.height === stage.height;
-        const s = Theme.s, w = Math.round(r.width * s), h = Math.round(r.height * s);
-        const x = Math.round(scr.x + r.x * s), y = Math.round(scr.y + r.y * s);
-        shotRect = r;
-        shotRec = mode === 3;
-        shotWhat = `${modes[mode]} · ${Qt.formatTime(new Date(), "hh:mm")}`;
-        shotDims = `${w}×${h}`;
-        // оверлей гаснет сразу, без анимации: запись и снимок с таймером идут с живого экрана
-        aim.snap = true;
         aim.shown = false;
+        shotRec = mode === 1;
+        shotWhat = `${modes[mode]} · ${Qt.formatTime(new Date(), "hh:mm")}`;
         if (shotRec) {
-            const g = full ? `-w ${scr.name}` : `-w region -region ${w}x${h}+${x}+${y}`;
             Quickshell.execDetached(["sh", "-c", `sleep ${delay}; notify-send -a "shot · rec" "Recording." "ctrl+alt+r — стоп"; `
-                + `gpu-screen-recorder ${g} ${Sys.recArgs()} -o "$(xdg-user-dir VIDEOS)/rec-$(date +%F_%H-%M-%S).mp4"`]);
-            return fx.restart();
-        }
-        // без таймера режем замёрзший кадр — что видел, то и снял; с таймером снимаем живой экран
-        // vips, в отличие от magick, падает на рамке за краем кадра на пиксель — дробный масштаб, поэтому зажимаем
-        const cx = Math.round(r.x * k), cy = Math.round(r.y * k);
-        const crop = `${cx} ${cy} ${Math.min(Math.round(r.width * k), frozenImg.sourceSize.width - cx)} ${Math.min(Math.round(r.height * k), frozenImg.sourceSize.height - cy)}`;
-        take.exec(["sh", "-c", `d="$(xdg-user-dir PICTURES)/shots"; mkdir -p "$d"; f="$d/shot-$(date +%F_%H-%M-%S).png"
-            if [ "$1" = 0 ]; then vips crop "$4" "$f[compression=1]" $2 2>/dev/null; else sleep "$1"; grim -g "$3" "$f"; fi \
-                && wl-copy -t image/png < "$f" && printf '%s' "$f"`,
-            "sh", String(delay), crop, `${x},${y} ${w}x${h}`, frozen]);
-    }
-
-    Process {
-        id: freeze
-        property string next
-        stdout: StdioCollector {
-            onStreamFinished: {
-                if (!text.trim()) return;
-                root.frozen = freeze.next; // только теперь: файл дописан
-                root.mode = 0;
-                root.drag = Qt.rect(0, 0, 0, 0);
-                const s = Theme.s;
-                root.wins = Hyprland.toplevels.values
-                    .filter(t => t.workspace?.id === Hyprland.focusedMonitor?.activeWorkspace?.id && t.lastIpcObject?.size)
-                    .sort((a, b) => (b.lastIpcObject.floating ?? false) - (a.lastIpcObject.floating ?? false)) // плавающие сверху
-                    .map(t => ({ x: (t.lastIpcObject.at[0] - root.scr.x) / s, y: (t.lastIpcObject.at[1] - root.scr.y) / s,
-                                 w: t.lastIpcObject.size[0] / s, h: t.lastIpcObject.size[1] / s }));
-                aim.snap = false;
-                aim.shown = true;
-                stage.forceActiveFocus();
-            }
+                + `gpu-screen-recorder -w screen ${Sys.recArgs()} -o "$(xdg-user-dir VIDEOS)/rec-$(date +%F_%H-%M-%S).mp4"`]);
+        } else {
+            Quickshell.execDetached(["niri", "msg", "action", "screenshot-screen"]);
         }
     }
-    Process {
-        id: take
-        stdout: StdioCollector {
-            onStreamFinished: {
-                if (!text) return;
-                root.shot = text;
-                fx.restart();
-            }
-        }
-    }
-
-    Editor { id: editor }
 
     // ============ прицел ============
     PanelWindow {
@@ -139,8 +80,8 @@ Scope {
                 if (e.key === Qt.Key_Escape) root.close();
                 else if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) root.fire();
                 else if (e.key === Qt.Key_Space) root.mode = 1;
-                else if (e.key === Qt.Key_Tab) root.mode = (root.mode + 1) % 4;
-                else if (e.key === Qt.Key_Backtab) root.mode = (root.mode + 3) % 4;
+                else if (e.key === Qt.Key_Tab) root.mode = (root.mode + 1) % 2;
+                else if (e.key === Qt.Key_Backtab) root.mode = (root.mode + 1) % 2;
                 else if (e.key === Qt.Key_T) root.delay = (root.delay + 1) % 3;
                 else return;
                 e.accepted = true;
@@ -227,6 +168,7 @@ Scope {
             // лупа: пиксели под курсором ×12, каждый — точка (Dm с шагом в пиксель), снизу координаты и цвет
             Item {
                 id: loupe
+                visible: false
                 readonly property int px: Math.floor(root.mx * root.k)
                 readonly property int py: Math.floor(root.my * root.k)
                 readonly property int zoom: 12
@@ -426,7 +368,7 @@ Scope {
                 }
                 Rectangle { id: thumbMask; width: 328; height: 184; radius: Theme.corner(24); visible: false; layer.enabled: true }
 
-                TapHandler { onTapped: { fx.stop(); fired.visible = false; editor.open(root.shot, root.scr); } }
+                TapHandler { onTapped: { fx.stop(); fired.visible = false; } }
                 HoverHandler { cursorShape: Qt.PointingHandCursor }
             }
         }

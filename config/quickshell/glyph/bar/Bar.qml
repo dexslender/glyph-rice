@@ -3,8 +3,6 @@ import QtQuick.Effects
 import QtQuick.Shapes
 import Quickshell
 import Quickshell.Bluetooth
-import Quickshell.Hyprland
-import Quickshell.Networking
 import Quickshell.Services.UPower
 import Quickshell.Wayland
 import qs
@@ -30,15 +28,30 @@ PanelWindow {
     color: "transparent"
     WlrLayershell.namespace: "glyph-bar"
 
-    readonly property int active: Hyprland.focusedWorkspace?.id ?? 0
-    // шесть точек, больше — если занят или открыт дальний
-    readonly property int count: Math.min(10, Math.max(6, active, ...Hyprland.workspaces.values.filter(w => w.toplevels.values.length).map(w => w.id)))
-    readonly property var top: ToplevelManager.activeToplevel
+    property int workspaceRevision: 0
+    readonly property var outputWorkspaces: {
+        workspaceRevision;
+        return Array.from({ length: Niri.workspaces.count }, (_, i) => Niri.workspaces.get(i)).filter(w => w.output === root.screen?.name);
+    }
+    readonly property int active: outputWorkspaces.find(w => w.isFocused)?.index ?? 0
+    readonly property int count: outputWorkspaces.length
+    readonly property var top: Niri.focusedWindow
     readonly property var bat: UPower.displayDevice
-    readonly property var wifi: Networking.devices.values.find(d => d.type === DeviceType.Wifi) ?? null
 
-    // hyprland 0.56 с lua: dispatch принимает lua-выражение
-    function go(ws) { Hyprland.dispatch(`hl.dsp.focus({ workspace = "${ws}" })`); }
+    Connections {
+        target: Niri.workspaces
+        function onDataChanged() { root.workspaceRevision++; }
+    }
+
+    Component.onCompleted: Niri.workspaces.maxCount = 10
+    function go(workspace) {
+        if (workspace) Niri.focusWorkspaceById(workspace.id);
+    }
+    function goRelative(direction) {
+        const current = outputWorkspaces.findIndex(w => w.isFocused);
+        const next = outputWorkspaces[current + direction];
+        if (next) go(next);
+    }
 
     SystemClock { id: clock; precision: SystemClock.Minutes }
 
@@ -53,7 +66,7 @@ PanelWindow {
             color: Theme.s1
             border { width: 1; color: Theme.s2 }
 
-            WheelHandler { onWheel: e => root.go(e.angleDelta.y > 0 ? "-1" : "+1") }
+            WheelHandler { onWheel: e => root.goRelative(e.angleDelta.y > 0 ? -1 : 1) }
 
             // знак: кольцо из точек, центр — красный, пока что-то пишет
             Item {
@@ -85,9 +98,9 @@ PanelWindow {
 
                     Rectangle {
                         required property int index
-                        readonly property int n: index + 1
-                        readonly property bool occ: (Hyprland.workspaces.values.find(w => w.id === n)?.toplevels.values.length ?? 0) > 0
-                        readonly property bool on: root.active === n
+                        readonly property var workspace: root.outputWorkspaces[index]
+                        readonly property bool occ: !!workspace?.activeWindowId
+                        readonly property bool on: !!workspace?.isFocused
                         property real len: on ? 28 : 8
                         width: root.vert ? 8 : len
                         height: root.vert ? len : 8
@@ -95,7 +108,7 @@ PanelWindow {
                         color: on ? Theme.fg : occ ? Theme.grey : Theme.s3
                         Behavior on len { NumberAnimation { duration: Theme.t; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.glide } }
                         Behavior on color { ColorAnimation { duration: Theme.t } }
-                        MouseArea { anchors.fill: parent; anchors.margins: -6; onClicked: root.go(parent.n) }
+                        MouseArea { anchors.fill: parent; anchors.margins: -6; onClicked: root.go(parent.workspace) }
                     }
                 }
             }
@@ -115,7 +128,7 @@ PanelWindow {
                     width: root.vert ? parent.height : parent.width
                     rotation: root.vert ? 90 : 0
                     elide: Text.ElideRight
-                    visible: (Hyprland.focusedWorkspace?.toplevels.values.length ?? 0) > 0
+                    visible: !!root.top
                     text: root.top ? `${root.top.appId.split(".").pop()} · ${root.top.title}` : ""
                     px: 11
                 }
@@ -160,7 +173,7 @@ PanelWindow {
             }
         }
     }
-    readonly property var parts: ({ layout: layoutC, wifi: wifiC, bluetooth: btC, sound: soundC, notes: notesC, battery: batC, mode: modeC, power: powerC, cat: catC })
+    readonly property var parts: ({ layout: layoutC, bluetooth: btC, sound: soundC, notes: notesC, battery: batC, mode: modeC, power: powerC, cat: catC })
     Component { id: layoutC; Lb { text: Sys.layout; px: 10 } }
     // кот RunCat: чем больше cpu, тем быстрее бежит (250 мс на кадр в простое, 50 на полной). cpu опрашивается, пока он в трее;
     // Binding не в делегате — уничтоженный значение не возвращает. Серый как есть, в светлой теме на белом теряется — чёрный, как buds
@@ -177,31 +190,6 @@ PanelWindow {
         }
     }
     Binding { target: SysStats; property: "cat"; value: Theme.state.bar.includes("cat") }
-    // сеть: две дуги и точка, концы круглые, как у батареи; выключен — косая черта
-    Component {
-        id: wifiC
-        Shape {
-            id: wf
-            width: 20
-            height: 18
-            preferredRendererType: Shape.CurveRenderer
-            readonly property color ink: root.wifi?.connected ? Theme.fg : Theme.grey
-            ShapePath {
-                strokeColor: wf.ink; strokeWidth: 2.2; capStyle: ShapePath.RoundCap; fillColor: "transparent"
-                PathAngleArc { centerX: 10; centerY: 15; radiusX: 5.5; radiusY: 5.5; startAngle: 220; sweepAngle: 100 }
-                PathAngleArc { centerX: 10; centerY: 15; radiusX: 10.5; radiusY: 10.5; startAngle: 220; sweepAngle: 100 }
-            }
-            ShapePath {
-                strokeColor: Networking.wifiEnabled ? "transparent" : wf.ink; strokeWidth: 2.2; capStyle: ShapePath.RoundCap
-                startX: 3; startY: 2
-                PathLine { x: 17; y: 17 }
-            }
-            ShapePath {
-                strokeWidth: -1; fillColor: wf.ink
-                PathAngleArc { centerX: 10; centerY: 15; radiusX: 1.9; radiusY: 1.9; startAngle: 0; sweepAngle: 360 }
-            }
-        }
-    }
     Component {
         id: btC
         Icon {

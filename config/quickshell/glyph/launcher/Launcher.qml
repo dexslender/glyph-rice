@@ -1,10 +1,10 @@
 import QtQuick
 import Quickshell
-import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
 import qs
 import qs.components
+import qs.services
 
 // лаунчер: тап Super или Super+Space. Панель 860 по центру, экран гаснет до 74%. Поиск-пилюля с красной кареткой,
 // режимы чипами (Tab): apps / style / windows / calc. Без запроса — «recent» и все приложения сеткой по 6, справа алфавит.
@@ -49,21 +49,12 @@ PanelWindow {
         function onValuesChanged() { appsT.restart(); }
     }
     // окна — только пока открыт режим windows: иначе любая смена заголовка пересобирала бы список
-    readonly property var wins: !visible || mode !== 2 ? [] : Hyprland.toplevels.values.map(t => {
-        const cls = t.lastIpcObject?.class ?? "";
-        const icon = DesktopEntries.heuristicLookup(cls)?.icon;
-        return { name: t.title, src: icon ? Quickshell.iconPath(icon, true) : "", glyph: glyph(cls), extra: cls.toLowerCase(),
-                 run: () => { focusT.addr = t.address; focusT.restart(); } };
-    })
-    // пока лаунчер держит клавиатуру (Exclusive), Hyprland переключит воркспейс, но фокус окну не даст — а отпустив
-    // клавиатуру, вернёт прежнее окно с его воркспейсом. Поэтому фокус — когда отпустили (уходит со следующим кадром).
-    // ponytail: 100 мс — запас на кадр; не хватит — фокусировать по onVisibleChanged, после fade
-    Timer {
-        id: focusT
-        property string addr
-        interval: 100
-        onTriggered: Hyprland.dispatch(`hl.dsp.focus({ window = "address:0x${addr}" })`) // Quickshell даёт адрес без 0x
-    }
+    readonly property var wins: !visible || mode !== 2 || !Niri.focusedWindow ? [] : (() => {
+        const w = Niri.focusedWindow;
+        const icon = DesktopEntries.heuristicLookup(w.appId)?.icon;
+        return [{ name: w.title, src: icon ? Quickshell.iconPath(icon, true) : "", glyph: glyph(w.appId), extra: w.appId.toLowerCase(),
+                  run: () => Niri.focusWindow(w.id) }];
+    })()
 
     // подпоследовательность: начало слова и подряд — выше. hl — индексы совпавших букв
     function match(s, q) {
@@ -117,7 +108,6 @@ PanelWindow {
     Behavior on t { NumberAnimation { duration: Theme.t; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.glide } }
 
     function open() {
-        focusT.stop(); // окно из прошлого открытия не перехватит фокус у лаунчера
         input.text = "";
         mode = 0;
         sel = 0;

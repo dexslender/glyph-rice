@@ -1,7 +1,6 @@
 import QtQuick
 import Quickshell
 import Quickshell.Bluetooth
-import Quickshell.Hyprland
 import Quickshell.Services.UPower
 import Quickshell.Wayland
 import qs
@@ -19,7 +18,7 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Bottom
     WlrLayershell.namespace: "glyph-home"
 
-    readonly property bool home: (Hyprland.focusedWorkspace?.toplevels.values.length ?? 0) === 0
+    readonly property bool home: !Niri.focusedWindow
     Binding { target: SysStats; property: "detailed"; value: root.home || Sys.deckOpen }
     // не в делегате: уничтоженный Binding значение не возвращает — убрал виджет, а cava работала бы вечно
     Binding { target: Cava; property: "active"; value: root.home && bento.model.some(w => w.id === "cava") }

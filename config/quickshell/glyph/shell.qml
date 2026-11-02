@@ -1,6 +1,6 @@
 import QtQuick
 import Quickshell
-import Quickshell.Hyprland
+import Quickshell.Io
 import "bar"
 import "buds"
 import "cal"
@@ -14,8 +14,8 @@ import "power"
 import "prefs"
 import "quick"
 import "settings"
+import "services"
 import "shot"
-import "vpn"
 import "wall"
 
 // glyph: rice в духе nothing os. Дом на обоях, бар, лаунчер, быстрые настройки,
@@ -24,19 +24,18 @@ import "wall"
 ShellRoot {
     id: shell
 
-    Launcher { id: launcher }
-    Quick { id: quick; onPowerRequested: power.open(); onSettingsRequested: prefs.open() }
-    Power { id: power }
-    Prefs { id: prefs; onWallRequested: walls.open() }
+    Launcher { id: launcherPanel }
+    Quick { id: quickPanel; onPowerRequested: powerPanel.open(); onSettingsRequested: prefsPanel.open() }
+    Power { id: powerPanel }
+    Prefs { id: prefsPanel; onWallRequested: wallsPanel.open() }
     Glyph {}
     Buds {}
     Cal { id: cal }
-    Clip { id: clip }
-    Charms { id: charms }
+    Clip { id: clipPanel }
+    Charms { id: charmsPanel }
     Deck { id: deck }
-    Shot { id: shot }
-    Vpn { id: vpn }
-    Walls { id: walls }
+    Shot { id: shotPanel }
+    Walls { id: wallsPanel }
 
     Variants {
         model: Quickshell.screens
@@ -45,37 +44,21 @@ ShellRoot {
             required property var modelData
             Back { screen: s.modelData }
             Home { screen: s.modelData }
-            Hot { screen: s.modelData; onTriggered: quick.peek() }
+            Hot { screen: s.modelData; onTriggered: quickPanel.peek() }
             Bar {
                 screen: s.modelData
-                onMarkClicked: launcher.toggle()
-                onTrayClicked: quick.toggle()
-                onPowerClicked: power.visible ? power.close() : power.open()
+                onMarkClicked: launcherPanel.toggle()
+                onTrayClicked: quickPanel.toggle()
+                onPowerClicked: powerPanel.visible ? powerPanel.close() : powerPanel.open()
                 onClockClicked: cal.toggle()
             }
         }
     }
 
-    // hypr как у demonshot: его Rules (settings/Rules.qml, тот же ~/.config/demonshot/rules.json) ставит монитор, ввод,
-    // движение, ночник и hypridle; сверху Theme.apply — свои цвета рамок, скругление и kitty. Его же зовём при смене темы
     Component.onCompleted: {
-        hypr();
         if (Theme.state.paint) Theme.apps(); // rice start ставит ссылки на term/ — цвет надо вернуть
         Rules.night();
         Rules.idle();
-    }
-    // то, что живёт в конфиге hypr. Он перечитывает его сам: сохранили любой файл hypr (ссылки живые — и git pull, и смена
-    // ветки), hyprctl reload — и возвращает умолчания variables.lua: рамки demonshot, монитор, ввод, анимации. Накладываем
-    // своё заново. hyprctl eval configreloaded не шлёт — петли нет. Ночник и hypridle — свои процессы, reload их не трогает
-    function hypr() {
-        Rules.monitor();
-        Rules.input();
-        Rules.motion();
-        Theme.apply();
-    }
-    Connections {
-        target: Hyprland
-        function onRawEvent(e) { if (e.name === "configreloaded") shell.hypr(); }
     }
     Connections {
         target: Theme
@@ -102,38 +85,25 @@ ShellRoot {
         target: Theme.state
         function onRoundingChanged() { Theme.apply(); }
     }
-    // режим ultra включает/снимает blur и тени поверх настроек — окна перекрасить (герцы и движение ставит сам Rules.setMode).
-    // Игровой — то же и ещё анимации
+    // режим ultra включает/снимает blur и тени поверх настроек — окна перекрасить
     Connections {
         target: Rules.store
         function onUltraChanged() { Theme.apply(); }
-        function onGameChanged() { Rules.motion(); Theme.apply(); }
     }
 
-    // тап Super — лаунчер на отпускании; любой Super+<key> по пути шлёт interrupt, и лаунчер не открывается
-    property bool interrupted: false
-    Shortcut {
-        name: "launcher"
-        description: "лаунчер (тап Super)"
-        onReleased: {
-            if (!shell.interrupted) launcher.toggle();
-            shell.interrupted = false;
-        }
-    }
-    Shortcut { name: "launcherArm"; description: "нажатие Super — сброс interrupt"; onPressed: shell.interrupted = false }
-    Shortcut { name: "launcherInterrupt"; description: "Super+<key> — не открывать лаунчер"; onPressed: shell.interrupted = true }
-    // Super+Space (алтарь у demonshot) — deck, дашборд снизу: лаунчер и так на тапе Super
-    Shortcut { name: "altar"; description: "deck: дашборд снизу"; onPressed: deck.toggle() }
-    Shortcut { name: "quick"; description: "быстрые настройки"; onPressed: quick.toggle() }
-    Shortcut { name: "ward"; description: "быстрые настройки"; onPressed: quick.toggle() } // Super+N у demonshot — те же тумблеры
-    Shortcut { name: "settings"; description: "настройки"; onPressed: prefs.toggle() }
-    Shortcut { name: "power"; description: "меню питания"; onPressed: power.visible ? power.close() : power.open() }
-    Shortcut { name: "shot"; description: "скриншот"; onPressed: shot.open() }
-    Shortcut { name: "pact"; description: "vpn: clash verge"; onPressed: vpn.toggle() }
-    Shortcut { name: "clip"; description: "буфер обмена"; onPressed: clip.toggle() }
-    Shortcut { name: "charms"; description: "эмодзи, каомодзи, символы"; onPressed: charms.toggle() }
-    Shortcut { name: "wall"; description: "обои"; onPressed: walls.toggle() }
-    Shortcut { name: "game"; description: "игровой режим"; onPressed: Rules.store.game = !Rules.store.game }
+    IpcHandler {
+        target: "shell"
 
-    component Shortcut: GlobalShortcut { appid: "shell" }
+        function launcher() { launcherPanel.toggle() }
+        function quick() { quickPanel.toggle() }
+        function altar() { deck.toggle() }
+        function settings() { prefsPanel.toggle() }
+        function shot() { shotPanel.open() }
+        function clip() { clipPanel.toggle() }
+        function charms() { charmsPanel.toggle() }
+        function wall() { wallsPanel.toggle() }
+        function power() { powerPanel.visible ? powerPanel.close() : powerPanel.open() }
+        function briUp() { Backlight.step(1) }
+        function briDown() { Backlight.step(-1) }
+    }
 }

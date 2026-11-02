@@ -1,6 +1,5 @@
 import QtQuick
 import Quickshell
-import Quickshell.Hyprland
 import Quickshell.Wayland
 import qs
 import qs.components
@@ -13,7 +12,10 @@ Scope {
     id: root
 
     property var on: null // экран, где открыта
-    function toggle() { on = on ? null : Quickshell.screens.find(s => s.name === Hyprland.focusedMonitor?.name) ?? Quickshell.screens[0]; }
+    function toggle() {
+        const output = Array.from({ length: Niri.workspaces.count }, (_, i) => Niri.workspaces.get(i)).find(w => w.isFocused)?.output;
+        on = on ? null : Quickshell.screens.find(s => s.name === output) ?? Quickshell.screens[0];
+    }
 
     readonly property var ids: Theme.state.deck.filter(id => Theme.decks.includes(id))
     readonly property int h: 232 // высота секций в пикселях макета

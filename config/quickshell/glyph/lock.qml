@@ -1,6 +1,5 @@
 import QtQuick
 import Quickshell
-import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Services.Pam
 import Quickshell.Wayland
@@ -42,16 +41,6 @@ ShellRoot {
 
     property string layout: "en"
     function short(name) { return name.slice(0, 2).toLowerCase(); }
-    Process {
-        running: true
-        command: ["sh", "-c", "hyprctl devices -j | jq -r '.keyboards[] | select(.main) | .active_keymap'"]
-        stdout: StdioCollector { onStreamFinished: if (text.trim()) shell.layout = shell.short(text.trim()) }
-    }
-    Connections {
-        target: Hyprland
-        function onRawEvent(e) { if (e.name === "activelayout") shell.layout = shell.short(e.data.split(",").pop()); }
-    }
-
     WlSessionLock {
         id: lock
         locked: true

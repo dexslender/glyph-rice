@@ -120,13 +120,6 @@ Item {
                     color: root.c[6]
                     Cap { anchors.centerIn: parent; text: "dnd"; color: root.ink }
                 }
-                Fill {
-                    width: 78
-                    height: 46
-                    radius: Theme.corner(12)
-                    color: root.c[2]
-                    Cap { anchors.centerIn: parent; text: "game"; color: root.c[5] }
-                }
             }
         }
 

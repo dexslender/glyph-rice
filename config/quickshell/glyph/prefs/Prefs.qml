@@ -1016,7 +1016,6 @@ PanelWindow {
                 }
             }
             Lb { text: Rules.store.ultra ? `ultra · ${Rules.rates[0]} hz, no motion, no blur, no shadows — your settings come back when you leave` : "cpu profile only · hz, motion and looks stay yours" }
-            Lb { visible: !PowerProfiles.hasPerformanceProfile; text: "no performance profile on this machine" }
         }
 
         // ---- INPUT: держишь клавишу — первая точка сразу, пауза delay, дальше rate в секунду; по живым кольцам ----

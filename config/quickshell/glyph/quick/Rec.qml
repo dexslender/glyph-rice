@@ -24,7 +24,6 @@ Rectangle {
 
         Lb { x: 4; text: "recording · ~/videos" }
 
-        Choice { label: "area"; opts: ["screen", "region"]; cur: root.st.recArea; onPicked: i => root.st.recArea = i }
         Choice { label: "audio"; opts: ["off", "sys", "mic", "both"]; cur: root.st.recAudio; onPicked: i => root.st.recAudio = i }
         Choice { label: "fps"; opts: Sys.recFps; cur: Math.max(0, Sys.recFps.indexOf(root.st.recFps)); onPicked: i => root.st.recFps = Sys.recFps[i] }
         Choice { label: "quality"; opts: ["med", "high", "max", "ultra"]; cur: root.st.recQuality; onPicked: i => root.st.recQuality = i }

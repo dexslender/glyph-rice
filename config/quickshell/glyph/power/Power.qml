@@ -1,6 +1,5 @@
 import QtQuick
 import Quickshell
-import Quickshell.Hyprland
 import Quickshell.Wayland
 import qs
 import qs.components
@@ -17,7 +16,7 @@ PanelWindow {
         ["SLEEP", () => Quickshell.execDetached(["systemctl", "suspend"])],
         ["SHUT DOWN", () => Quickshell.execDetached(["systemctl", "poweroff"])],
         ["REBOOT", () => Quickshell.execDetached(["systemctl", "reboot"])],
-        ["LOG OUT", () => Hyprland.dispatch("hl.dsp.exit()")]
+        ["LOG OUT", () => Niri.sendRawAction({ Quit: { skip_confirmation: true } })]
     ]
 
     function open() {
@@ -108,7 +107,7 @@ PanelWindow {
                 }
                 Lb {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    readonly property int n: Hyprland.toplevels.values.length
+                    readonly property int n: Niri.windows.count
                     text: `${n} window${n === 1 ? "" : "s"} open`
                 }
             }

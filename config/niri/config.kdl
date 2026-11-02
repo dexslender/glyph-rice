@@ -1,0 +1,231 @@
+// Glyph niri configuration.
+// Hyprland remains in config/hypr; this file is the niri session counterpart.
+
+input {
+    keyboard {
+        xkb {
+            layout "latam"
+        }
+        repeat-delay 250
+        repeat-rate 35
+    }
+
+    touchpad {
+	tap
+        natural-scroll
+        scroll-factor 0.5
+    }
+}
+
+environment {
+    QT_WAYLAND_DISABLE_WINDOWDECORATION "1"
+    QT_AUTO_SCREEN_SCALE_FACTOR "1"
+    GDK_BACKEND "wayland,x11"
+    QT_QPA_PLATFORM "wayland;xcb"
+    SDL_VIDEODRIVER "wayland,x11,windows"
+    CLUTTER_BACKEND "wayland"
+    ELECTRON_OZONE_PLATFORM_HINT "auto"
+    XDG_CURRENT_DESKTOP "niri"
+    XDG_SESSION_TYPE "wayland"
+    XDG_SESSION_DESKTOP "niri"
+    _JAVA_AWT_WM_NONREPARENTING "1"
+}
+
+spawn-sh-at-startup "~/.config/quickshell/rice/rice start"
+spawn-at-startup "swayidle"
+spawn-at-startup "lxqt-policykit-agent"
+spawn-sh-at-startup "wl-paste --type text --watch cliphist store"
+spawn-sh-at-startup "wl-paste --type image --watch cliphist store"
+spawn-at-startup "/usr/lib/geoclue-2.0/demos/agent"
+spawn-at-startup "mpris-proxy"
+
+layout {
+    gaps 15
+    background-color "transparent"
+}
+
+blur {
+	off
+    passes 2
+    offset 8
+}
+
+window-rule {
+    opacity 1.0
+}
+
+window-rule {
+    match app-id=r#"^(guifetch|yad|zenity|wev|org\.gnome\.FileRoller|file-roller|blueman-manager|com\.github\.GradienceTeam\.Gradience|feh|imv|system-config-printer|org\.quickshell)$"#
+    open-floating true
+}
+
+window-rule {
+    match title=r#"(Select|Open)( a)? (File|Folder)(s)?|File (Operation|Upload)( Progress)?|.* Properties|Export Image as PNG|GIMP Crash Debug|Save As|Library"#
+    open-floating true
+}
+
+window-rule {
+    match app-id="^steam$" title="^Friends List$"
+    open-floating true
+}
+
+window-rule {
+    match app-id="^com-atlauncher-App$" title="^ATLauncher Console$"
+    open-floating true
+}
+
+window-rule {
+    match app-id="^PandoraLauncher$" title="^Minecraft Game Output$"
+    open-floating true
+}
+
+window-rule {
+    match app-id=r#"^org\.quickshell$"# title="^Rice$"
+    open-floating true
+}
+
+window-rule {
+    match app-id=r#"^(kitty|equibop|org\.quickshell|imv|swappy|krita|gimp|inkscape|darktable|resolve|kdenlive|shotcut|blender|godot|steam_app_(default|[0-9]+)|gamescope)$"#
+    background-effect {
+        xray false
+    }
+}
+
+window-rule {
+    match title=r#"^Picture(-| )in(-| )[Pp]icture$"#
+    open-floating true
+    default-column-width { fixed 480; }
+    default-window-height { fixed 270; }
+}
+
+window-rule {
+    match app-id=r#"^steam_app_(default|[0-9]+)$"#
+    variable-refresh-rate true
+}
+
+window-rule {
+    match app-id=r#"^ueberzugpp_.*$"#
+    open-floating true
+    open-focused false
+}
+
+window-rule {
+    match app-id=r#"^win[0-9]+$"#
+    exclude title=""
+    opacity 1.0
+}
+
+layer-rule {
+    match namespace=r#"^glyph-(island|buds|wall|clip|prefs|home|back|power|hot|charms|shot|quick|bar|cal|launcher|caffeine|vpn)$"#
+    background-effect {
+        blur false
+    }
+}
+
+layer-rule {
+    match namespace="^glyph-back$"
+    place-within-backdrop true
+}
+
+layer-rule {
+    match namespace="^glyph-power$"
+    opacity 1.0
+}
+
+overview {
+    workspace-shadow {
+        off
+    }
+}
+
+binds {
+    Super_L { spawn "qs" "-c" "glyph" "ipc" "call" "shell" "launcher"; }
+
+    Super+A { spawn "qs" "-c" "glyph" "ipc" "call" "shell" "quick"; }
+    Super+Space { spawn "qs" "-c" "glyph" "ipc" "call" "shell" "altar"; }
+    Super+I { spawn "qs" "-c" "glyph" "ipc" "call" "shell" "settings"; }
+    Print { spawn "qs" "-c" "glyph" "ipc" "call" "shell" "shot"; }
+    Super+V { spawn "qs" "-c" "glyph" "ipc" "call" "shell" "clip"; }
+    Super+Period { spawn "qs" "-c" "glyph" "ipc" "call" "shell" "charms"; }
+    Super+Shift+W { spawn "qs" "-c" "glyph" "ipc" "call" "shell" "wall"; }
+    Super+Escape { spawn "qs" "-c" "glyph" "ipc" "call" "shell" "power"; }
+    Super+L { spawn-sh "~/.config/quickshell/rice/rice lock"; }
+
+    Super+Q { spawn "kitty" "-1"; }
+    Super+W { spawn "zen-browser"; }
+    Super+E { spawn "thunar"; }
+    Super+F { fullscreen-window; }
+    Super+C { close-window; }
+    Super+Left { focus-column-left; }
+    Super+Right { focus-column-right; }
+    Super+Up { focus-window-up; }
+    Super+Down { focus-window-down; }
+    Super+Shift+Left { move-column-left; }
+    Super+Shift+Right { move-column-right; }
+    Super+Shift+Up { move-window-up; }
+    Super+Shift+Down { move-window-down; }
+    Super+Alt+Space { toggle-window-floating; }
+    Ctrl+Super+Backslash { center-column; }
+    Ctrl+Super+Alt+Backslash { maximize-window-to-edges; }
+    Super+Alt+F { toggle-windowed-fullscreen; }
+
+    Super+1 { focus-workspace 1; }
+    Super+2 { focus-workspace 2; }
+    Super+3 { focus-workspace 3; }
+    Super+4 { focus-workspace 4; }
+    Super+5 { focus-workspace 5; }
+    Super+6 { focus-workspace 6; }
+    Super+7 { focus-workspace 7; }
+    Super+8 { focus-workspace 8; }
+    Super+9 { focus-workspace 9; }
+    Super+0 { focus-workspace 10; }
+    Super+Alt+1 { move-window-to-workspace 1; }
+    Super+Alt+2 { move-window-to-workspace 2; }
+    Super+Alt+3 { move-window-to-workspace 3; }
+    Super+Alt+4 { move-window-to-workspace 4; }
+    Super+Alt+5 { move-window-to-workspace 5; }
+    Super+Alt+6 { move-window-to-workspace 6; }
+    Super+Alt+7 { move-window-to-workspace 7; }
+    Super+Alt+8 { move-window-to-workspace 8; }
+    Super+Alt+9 { move-window-to-workspace 9; }
+    Super+Alt+0 { move-window-to-workspace 10; }
+    Super+Page_Up { focus-workspace-up; }
+    Super+Page_Down { focus-workspace-down; }
+    Super+Alt+Page_Up { move-window-to-workspace-up; }
+    Super+Alt+Page_Down { move-window-to-workspace-down; }
+    Super+WheelScrollUp cooldown-ms=150 { focus-workspace-up; }
+    Super+WheelScrollDown cooldown-ms=150 { focus-workspace-down; }
+    Ctrl+Super+WheelScrollUp cooldown-ms=150 { move-column-to-workspace-up; }
+    Ctrl+Super+WheelScrollDown cooldown-ms=150 { move-column-to-workspace-down; }
+
+    Alt+Tab { focus-window-previous; }
+    Super+Z { consume-or-expel-window-left; }
+    Super+X { set-window-width "-10%"; }
+    Super+Shift+X { set-window-height "-10%"; }
+    Super+U { expel-window-from-column; }
+    Super+Comma { toggle-column-tabbed-display; }
+    Super+Shift+Comma { toggle-column-tabbed-display; }
+    Super+Shift+P { toggle-window-floating; }
+    Super+Shift+R { spawn-sh "~/.config/quickshell/rice/rice restart"; }
+
+    XF86MonBrightnessUp allow-when-locked=true { spawn "qs" "-c" "glyph" "ipc" "call" "shell" "briUp"; }
+    XF86MonBrightnessDown allow-when-locked=true { spawn "qs" "-c" "glyph" "ipc" "call" "shell" "briDown"; }
+    XF86AudioMicMute allow-when-locked=true { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"; }
+    XF86AudioMute allow-when-locked=true { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"; }
+    Super+Shift+M allow-when-locked=true { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"; }
+    XF86AudioRaiseVolume allow-when-locked=true { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SINK@ 0; wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ 5%+"; }
+    XF86AudioLowerVolume allow-when-locked=true { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SINK@ 0; wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"; }
+
+    Ctrl+Super+Space allow-when-locked=true { spawn-sh "playerctl play-pause"; }
+    XF86AudioPlay allow-when-locked=true { spawn-sh "playerctl play-pause"; }
+    XF86AudioPause allow-when-locked=true { spawn-sh "playerctl play-pause"; }
+    Ctrl+Super+Equal allow-when-locked=true { spawn-sh "playerctl next"; }
+    XF86AudioNext allow-when-locked=true { spawn-sh "playerctl next"; }
+    Ctrl+Super+Minus allow-when-locked=true { spawn-sh "playerctl previous"; }
+    XF86AudioPrev allow-when-locked=true { spawn-sh "playerctl previous"; }
+    XF86AudioStop allow-when-locked=true { spawn-sh "playerctl stop"; }
+
+    Super+Shift+S { screenshot; }
+    Super+Shift+C { spawn-sh "niri msg pick-color"; }
+    Super+Shift+L allow-when-locked=true { spawn-sh "systemctl suspend-then-hibernate || systemctl suspend"; }
+}

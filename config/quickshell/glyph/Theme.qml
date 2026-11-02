@@ -179,11 +179,10 @@ Singleton {
             property bool quickHover: true // быстрые настройки по наведению на правый край
             property bool deckHover: true  // deck — панель снизу по центру, вылезает по наведению на край
             property var deck: ["clock", "weather", "perf", "net", "media"] // её секции по порядку, см. decks
-            property var bar: ["layout", "wifi", "bluetooth", "sound", "notes", "battery", "mode", "power"] // трей бара сверху вниз, см. bars
+            property var bar: ["layout", "bluetooth", "sound", "notes", "battery", "mode", "power"] // трей бара сверху вниз, см. bars
             property bool barTitle: true   // заголовок окна столбиком в баре
             property string barAt: "left" // left или top; за баром едут календарь, карточка батареи, дом, остров и вспышка Glyph
             // запись (quick/Rec, Sys.recArgs)
-            property int recArea: 0        // 0 весь монитор, 1 область (slurp)
             property int recAudio: 0       // 0 без звука, 1 система, 2 микрофон, 3 оба одной дорожкой
             property int recFps: 60
             property int recQuality: 2     // medium, high, very_high, ultra
@@ -196,15 +195,13 @@ Singleton {
     // секции deck
     readonly property var decks: ["clock", "weather", "perf", "net", "media"]
     // трей бара
-    readonly property var bars: ["layout", "wifi", "bluetooth", "sound", "notes", "battery", "mode", "power", "cat"]
+    readonly property var bars: ["layout", "bluetooth", "sound", "notes", "battery", "mode", "power", "cat"]
 
     // ---- вид всего, что вне шелла. Зовёт только shell.qml: на старте, при смене темы и цвета ----
     // hypr наследует demonshot: монитор, ввод, простой, ночник и движение ставит его же Rules (shell.qml), анимации — из
     // конфига hypr. Отсюда — зазоры/рамка/blur/тени из его rules.json, а свои у glyph — цвета рамок, тени, групп, фон и
     // скругление 20 (без них остались бы красные свечение и группы demonshot из hypr/variables.lua).
     // Обратно к demonshot: `rice switch` делает hyprctl reload, его applyAll перекрасит
-    function hypr(lua) { Quickshell.execDetached(["hyprctl", "eval", lua]); }
-
     // kitty подключает этот файл после своих цветов (include в kitty.conf); demonshot пишет туда же свою палитру
     FileView { id: kitty; path: Quickshell.env("HOME") + "/.config/demonshot/kitty.conf"; printErrors: false }
     // 16 ANSI из концепта: пастель только терминалу. Светлая тема их переставляет (make)
@@ -212,19 +209,6 @@ Singleton {
                                  "#4A4A4A", "#F0434B", "#B5CCB4", "#E8D6A8", "#AABBD4", "#CDB6D6", "#ABCDCD", "#F2F2F2"]
 
     function apply() {
-        // игровой режим (Rules.store.game) — поверх настроек, как ultra: рамка 1, без зазоров и скругления, tearing для
-        // окон с immediate (игры, hyprland/rules.lua). Вышли — свои значения вернутся, allow_tearing — false, как в general.lua
-        const r = Rules.store, g = r.game;
-        const c = x => `"rgb(${hex(x)})"`;
-        // тень: в тёмной — еле заметное белое свечение, в светлой — мягкая чёрная
-        const shadow = light ? "rgba(0000002E)" : `rgba(${hex(fg)}1A)`;
-        hypr(`hl.config({ general = { gaps_in = ${g ? 0 : r.gapsIn}, gaps_out = ${g ? 0 : r.gapsOut}, border_size = ${g ? 1 : r.border}, allow_tearing = ${g}, `
-           + `col = { active_border = ${c(fg)}, inactive_border = ${c(s3)} } }, `
-           + `decoration = { rounding = ${g ? 0 : st.rounding}, blur = { enabled = ${Rules.blurOn} }, shadow = { enabled = ${Rules.shadowOn}, color = "${shadow}" } }, `
-           + `group = { col = { border_active = ${c(fg)}, border_inactive = ${c(s3)}, border_locked_active = ${c(fg)}, border_locked_inactive = ${c(mute)} }, `
-           + `groupbar = { font_family = "${mono}", text_color = ${c(fg)}, col = { active = ${c(s3)}, inactive = ${c(s1)}, locked_active = ${c(s3)}, locked_inactive = ${c(s1)} } } }, `
-           + `misc = { background_color = ${c(bg)} } })`);
-
         kitty.setText("# glyph: пишет Theme.apply(), руками не править\n" + [
             ["font_family", "Space Mono"], ["window_padding_width", "26 30"], ["cursor_trail", "0"],
             ["foreground", fg], ["background", s1], ["cursor", fg], ["cursor_text_color", s1],
@@ -245,18 +229,5 @@ Singleton {
     // ponytail: светлая тема здесь тёмная — база gtk тёмная (adw-gtk3-dark): у обоев — тот же вариант в тёмной, у палитр —
     // тёмная пара (latte → mocha), у nothing — glyph; светлой — менять ещё gtk-theme и color-scheme. btop не красим — его папка
     // ссылкой целиком в репо, копию некуда деть; понадобится — color_theme путём до копии
-    function apps() {
-        const from = glyphDark.concat(ansi.slice(1, 7));
-        const p = pal.light ? pair(false) ?? make({ light: false }) : pal;
-        const to = p.c.concat([p.red], p.ansi.slice(2, 7));
-        const pairs = from.map((c, i) => [c, "#" + hex(Qt.lighter(to[i], 1))]).filter(([a, b]) => a !== b);
-        const sed = pairs.map(([a], i) => ["-e", `s/${a}/@${i}@/gI`]).concat(pairs.map(([, b], i) => ["-e", `s/@${i}@/${b}/g`])).reduce((x, y) => x.concat(y), []);
-        Quickshell.execDetached(["bash", "-c", `t=$1 o=$2; shift 2
-for f in gtk-3.0/gtk.css gtk-4.0/gtk.css qtengine.colors; do
-    l=$HOME/.config/$f
-    [ -L "$l" ] || [ ! -e "$l" ] || continue
-    if [ $# -gt 0 ]; then mkdir -p "$(dirname "$o/$f")" && sed "$@" "$t/$f" > "$o/$f" && ln -sfn "$o/$f" "$l"; else ln -sfn "$t/$f" "$l"; fi
-done`,
-            "bash", Quickshell.shellPath("term"), riceState + "/glyph"].concat(sed));
-    }
+    function apps() {}
 }

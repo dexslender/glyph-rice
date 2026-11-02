@@ -1,6 +1,5 @@
 import QtQuick
 import Quickshell.Bluetooth
-import Quickshell.Networking
 import qs
 import qs.components
 
@@ -11,12 +10,9 @@ Rectangle {
     property string kind // "wifi" | "bt" | "" — закрыт
     signal touched       // любой клик внутри — панель приколота
 
-    readonly property bool isWifi: kind === "wifi"
-    readonly property var wifi: Networking.devices.values.find(d => d.type === DeviceType.Wifi) ?? null
+    readonly property bool isWifi: false
     readonly property var bt: Bluetooth.defaultAdapter
-    readonly property bool on: isWifi ? Networking.wifiEnabled : bt?.enabled ?? false
-    // сеть со страницей входа: сам портал (и снятие vpn) открывает Vpn, здесь — открыть его снова, если вкладку закрыли
-    readonly property bool portal: Networking.connectivity === NetworkConnectivity.Portal
+    readonly property bool on: bt?.enabled ?? false
 
     property var ask: null // сеть, которой нужен пароль
     property string err
@@ -24,22 +20,14 @@ Rectangle {
     // пароль ушёл — фокус обратно на панель, чтобы Esc закрывал её
     onAskChanged: if (!ask && pw.activeFocus) root.forceActiveFocus()
 
-    Binding { when: root.isWifi && root.on; target: root.wifi; property: "scannerEnabled"; value: true }
     Binding { when: root.kind === "bt" && root.on; target: root.bt; property: "discovering"; value: true }
 
     // своя сверху, дальше сохранённые, дальше по силе. Пока вводят пароль — только та сеть: пересортировка не съест набранное
-    readonly property var nets: !isWifi || !wifi ? [] : wifi.networks.values.filter(n => n.name)
-        .sort((a, b) => b.connected - a.connected || b.known - a.known || b.signalStrength - a.signalStrength).slice(0, 6)
     // безымянные (только адрес) — шум эфира
     readonly property var devs: kind !== "bt" || !bt ? [] : bt.devices.values.filter(d => d.paired || d.deviceName)
         .sort((a, b) => b.connected - a.connected || b.paired - a.paired).slice(0, 6)
-    readonly property var rows: !on ? [] : ask ? [ask] : isWifi ? nets : devs
+    readonly property var rows: !on ? [] : devs
 
-    function bars(n) {
-        const lock = n.security !== WifiSecurityType.Open && n.security !== WifiSecurityType.Owe;
-        const i = Math.min(3, Math.floor(n.signalStrength * 4));
-        return (lock ? ["\u{F0920}", "\u{F0923}", "\u{F0926}", "\u{F0929}"] : ["\u{F091F}", "\u{F0922}", "\u{F0925}", "\u{F0928}"])[i];
-    }
     function btIcon(i) {
         return /audio|head/.test(i) ? "\u{F02CB}" : /mouse/.test(i) ? "\u{F037D}" : /keyboard/.test(i) ? "\u{F030C}" : /phone/.test(i) ? "\u{F03F2}" : "\u{F00AF}";
     }
@@ -52,12 +40,10 @@ Rectangle {
             if (!o.paired) { o.trusted = true; return o.pair(); }
             return o.connected ? o.disconnect() : o.connect();
         }
-        if (o.connected) return portal ? Qt.openUrlExternally("http://neverssl.com") : o.disconnect();
-        if (o.known || o.security === WifiSecurityType.Open || o.security === WifiSecurityType.Owe) return o.connect();
-        ask = o;
+        if (o.connected) return o.disconnect();
     }
 
-    visible: kind === "wifi" || kind === "bt"
+    visible: kind === "bt"
     height: list.height + 32
     radius: Theme.corner(30)
     color: Theme.s2
@@ -75,9 +61,9 @@ Rectangle {
             Lb {
                 x: 4
                 anchors.verticalCenter: parent.verticalCenter
-                text: !root.on ? `${root.isWifi ? "wi-fi" : "bluetooth"} · off`
+                text: !root.on ? "bluetooth · off"
                     : root.ask ? "password"
-                    : root.isWifi ? `networks · ${root.nets.length}` : `devices · ${root.bt?.discovering ? "searching" : root.devs.length}`
+                    : `devices · ${root.bt?.discovering ? "searching" : root.devs.length}`
             }
             Lb {
                 anchors { right: parent.right; verticalCenter: parent.verticalCenter }
@@ -98,7 +84,7 @@ Rectangle {
                 required property var modelData
                 readonly property var o: modelData
                 readonly property bool on: o.connected
-                readonly property bool busy: root.isWifi ? o.stateChanging : o.pairing || o.state === BluetoothDeviceState.Connecting || o.state === BluetoothDeviceState.Disconnecting
+                readonly property bool busy: o.pairing || o.state === BluetoothDeviceState.Connecting || o.state === BluetoothDeviceState.Disconnecting
                 width: list.width
                 height: 56
                 radius: Theme.corner(28)
@@ -114,7 +100,7 @@ Rectangle {
                     color: row.on ? Theme.fg : Theme.s3
                     Icon {
                         anchors.centerIn: parent
-                        text: root.isWifi ? root.bars(row.o) : root.btIcon(row.o.icon)
+                        text: root.btIcon(row.o.icon)
                         font.pixelSize: 19
                         color: row.on ? Theme.ink : Theme.fg
                         // идёт соединение — иконка дышит
@@ -132,9 +118,7 @@ Rectangle {
                     Text { width: parent.width; elide: Text.ElideRight; text: row.o.name || row.o.address; font { family: Theme.ui; pixelSize: 15; weight: Font.DemiBold } color: Theme.fg }
                     Lb {
                         px: 10
-                        text: root.isWifi
-                            ? `${row.on ? (root.portal ? "sign in" : "connected") : row.busy ? "connecting" : row.o.known ? "saved" : WifiSecurityType.toString(row.o.security).toLowerCase()} · ${Math.round(row.o.signalStrength * 100)}%`
-                            : (row.o.pairing ? "pairing" : row.o.state === BluetoothDeviceState.Connecting ? "connecting" : row.o.state === BluetoothDeviceState.Disconnecting ? "disconnecting"
+                        text: (row.o.pairing ? "pairing" : row.o.state === BluetoothDeviceState.Connecting ? "connecting" : row.o.state === BluetoothDeviceState.Disconnecting ? "disconnecting"
                                : row.on ? "connected" : row.o.paired ? "paired" : "pair") + (row.o.batteryAvailable ? ` · ${Math.round(row.o.battery * 100)}%` : "")
                     }
                 }
@@ -142,15 +126,6 @@ Rectangle {
                 TapHandler { onTapped: root.tap(row.o) }
                 // правый клик по сохранённой — забыть
                 TapHandler { acceptedButtons: Qt.RightButton; onTapped: { root.touched(); if (row.o.known || row.o.paired) row.o.forget(); } }
-                // нет пароля или он не тот — NM просит секрет: снова строка пароля
-                Connections {
-                    target: root.isWifi ? row.o : null
-                    ignoreUnknownSignals: true
-                    function onConnectionFailed(r) {
-                        if (r === ConnectionFailReason.NoSecrets) root.ask = row.o;
-                        else root.err = ConnectionFailReason.toString(r);
-                    }
-                }
             }
         }
 
@@ -193,7 +168,7 @@ Rectangle {
             x: 4
             topPadding: 4
             bottomPadding: 4
-            text: root.isWifi ? "scanning…" : "nothing nearby"
+            text: "nothing nearby"
         }
     }
 }

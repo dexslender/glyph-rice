@@ -1,7 +1,6 @@
 import QtQuick
 import Quickshell
 import Quickshell.Bluetooth
-import Quickshell.Networking
 import Quickshell.Services.Notifications
 import Quickshell.Wayland
 import qs
@@ -47,8 +46,6 @@ PanelWindow {
     WlrLayershell.keyboardFocus: open && !peeked ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     WlrLayershell.namespace: "glyph-quick"
 
-    readonly property var wifi: Networking.devices.values.find(d => d.type === DeviceType.Wifi) ?? null
-    readonly property var net: wifi?.networks.values.find(n => n.connected) ?? null
     readonly property var bt: Bluetooth.defaultAdapter
     readonly property var btDev: Bluetooth.devices.values.find(d => d.connected) ?? null
     SystemClock { id: clock; precision: SystemClock.Minutes }
@@ -112,15 +109,7 @@ PanelWindow {
                     Row {
                         width: parent.width
                         spacing: 12
-                        Pill {
-                            on: Networking.wifiEnabled
-                            icon: on ? "\u{F05A9}" : "\u{F05AA}"
-                            name: "Wi-Fi"
-                            sub: !on ? "off" : (Networking.connectivity === NetworkConnectivity.Portal ? "sign in · " : "") + (root.net?.name ?? "no network")
-                            picked: root.pick === "wifi"
-                            onClicked: Networking.wifiEnabled = !Networking.wifiEnabled
-                            onMenu: root.pick = picked ? "" : "wifi"
-                        }
+                        Item { width: 0; height: 0 }
                         Pill {
                             on: root.bt?.enabled ?? false
                             icon: on ? "\u{F00AF}" : "\u{F00B2}"
@@ -195,7 +184,6 @@ PanelWindow {
                         Tile { icon: "\u{F0176}"; name: "caffeine"; on: Sys.caffeine; onClicked: Sys.caffeine = !Sys.caffeine }
                         Tile { icon: on ? "\u{F036C}" : "\u{F036D}"; name: "mic"; on: Sys.micOn; onClicked: Sys.toggleMic() }
                         Tile { icon: "\u{F044A}"; name: "record"; on: Sys.rec; picked: root.pick === "rec"; onClicked: { root.close(); Sys.toggleRec(); } onMenu: root.pick = picked ? "" : "rec" }
-                        Tile { icon: "\u{F0483}"; name: "vpn"; on: Sys.vpn; onClicked: Sys.toggleVpn() }
                         Tile { icon: "\u{F050E}"; name: "dark"; on: !Theme.light; onClicked: Theme.setLight(!Theme.light) }
                     }
 
@@ -212,7 +200,7 @@ PanelWindow {
                         spacing: 12
                         Rectangle {
                             id: modes
-                            width: parent.width - game.width - 12
+                            width: parent.width
                             height: 54
                             radius: Theme.corner(27)
                             color: Theme.s2
@@ -259,17 +247,6 @@ PanelWindow {
                                     HoverHandler { cursorShape: Qt.PointingHandCursor }
                                 }
                             }
-                        }
-                        Rectangle {
-                            id: game
-                            width: 54
-                            height: 54
-                            radius: 27
-                            color: Rules.store.game ? Theme.fg : Theme.s2
-                            Behavior on color { ColorAnimation { duration: Theme.t } }
-                            Icon { anchors.centerIn: parent; text: "\u{F0297}"; font.pixelSize: 22; color: Rules.store.game ? Theme.ink : Theme.fg }
-                            TapHandler { onTapped: { root.pin(); Rules.store.game = !Rules.store.game; } }
-                            HoverHandler { cursorShape: Qt.PointingHandCursor }
                         }
                     }
 

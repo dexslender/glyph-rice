@@ -3,10 +3,8 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Bluetooth
-import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Services.Pipewire
-import Quickshell.Services.SystemTray
 import Quickshell.Wayland
 import qs.services
 import qs.settings
@@ -42,17 +40,8 @@ Singleton {
     function setBri(v) { Backlight.set(v); }
     Binding { target: Backlight; property: "steps"; value: Theme.state.briSteps }
 
-    // ---- раскладка: старт — main-клавиатура из hyprctl, дальше событие activelayout ----
+    // ---- раскладка: niri owns keyboard layout; keep the UI stable until its layout model is available ----
     property string kbd: ""
-    Process {
-        running: true
-        command: ["hyprctl", "devices", "-j"]
-        stdout: StdioCollector { onStreamFinished: root.kbd = JSON.parse(this.text).keyboards.find(k => k.main)?.active_keymap ?? "" }
-    }
-    Connections {
-        target: Hyprland
-        function onRawEvent(e) { if (e.name === "activelayout") root.kbd = e.data.slice(e.data.lastIndexOf(",") + 1); }
-    }
     readonly property string layout: kbd.slice(0, 2).toLowerCase() // "English (US)" → en
 
     // ---- запись и авиарежим: их же включают бинды hypr, поэтому опрос. Ночник — общий с demonshot, в его rules.json
@@ -81,10 +70,9 @@ Singleton {
         const a = ["", "default_output", "default_input", "default_output|default_input"][st.recAudio];
         return `-f ${st.recFps} -q ${["medium", "high", "very_high", "ultra"][st.recQuality]} -cursor ${st.recCursor ? "yes" : "no"}` + (a ? ` -a "${a}"` : "");
     }
-    // второй раз — стоп. Область — slurp; отменили выбор — gsr не стартует, rec поправит опрос
+    // второй раз — стоп. niri recording is full-screen only.
     function toggleRec() {
-        const w = Theme.state.recArea ? `-w region -region "$(slurp -f %wx%h+%x+%y)"` : `-w ${Hyprland.focusedMonitor?.name ?? "screen"}`;
-        sh(`pkill -INT -f '^gpu-screen-recorder' || exec gpu-screen-recorder ${w} ${recArgs()} -o "$(xdg-user-dir VIDEOS)/rec-$(date +%F_%H-%M-%S).mp4"`);
+        sh(`pkill -INT -f '^gpu-screen-recorder' || exec gpu-screen-recorder -w screen ${recArgs()} -o "$(xdg-user-dir VIDEOS)/rec-$(date +%F_%H-%M-%S).mp4"`);
         rec = !rec;
     }
     function toggleNight() { Rules.store.night = !night; Rules.night(); }
@@ -128,30 +116,4 @@ Singleton {
         }
     }
 
-    // ---- vpn: clash verge через пункты его трея, как договор в demonshot.
-    // ponytail: подписи английские (language: en в verge); другой язык — поменять строки ----
-    readonly property var verge: SystemTray.items.values.find(i => i.title === "clash-verge" || i.id.includes("clash-verge")) ?? null
-    QsMenuOpener { id: vmenu; menu: root.verge?.menu ?? null }
-    readonly property var vpnItems: ["System Proxy", "TUN Mode"]
-    function vpnItem(l) { return vmenu.children.values.find(e => e.text.startsWith(l)) ?? null; }
-    readonly property bool vpn: vpnItems.some(l => vpnItem(l)?.checkState === Qt.Checked)
-    property var queue: []
-    function toggleVpn() {
-        if (!verge) return Quickshell.execDetached(["clash-verge"]); // спит — разбудить
-        queue = vpn ? vpnItems.filter(l => vpnItem(l)?.checkState === Qt.Checked) : vpnItems;
-        presser.start();
-    }
-    // verge пересобирает меню после каждого нажатия — по одному
-    Timer {
-        id: presser
-        interval: 350
-        repeat: true
-        triggeredOnStart: true
-        onTriggered: {
-            const [l, ...rest] = root.queue;
-            root.queue = rest;
-            if (l) root.vpnItem(l)?.triggered();
-            if (!rest.length) stop();
-        }
-    }
 }

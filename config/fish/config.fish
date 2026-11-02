@@ -6,7 +6,7 @@ if status is-interactive
     command -v starship &> /dev/null && starship init fish | source
 
     # Direnv + Zoxide
-    command -v direnv &> /dev/null && direnv hook fish | source
+    type -q direnv; and direnv hook fish | source
     command -v zoxide &> /dev/null && zoxide init fish --cmd cd | source
 
     # Better ls

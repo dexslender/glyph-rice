@@ -1,6 +1,5 @@
 import QtQuick
 import Quickshell
-import Quickshell.Networking
 import Quickshell.Services.UPower
 import Quickshell.Wayland
 import qs
@@ -85,7 +84,7 @@ WlSessionLockSurface {
             spacing: 16
             opacity: root.ph(0.45, 0.85)
             Lb { anchors.verticalCenter: parent.verticalCenter; text: root.layout }
-            Icon { anchors.verticalCenter: parent.verticalCenter; text: Networking.wifiEnabled ? "\u{F05A9}" : "\u{F05AA}"; font.pixelSize: 17 }
+            Icon { anchors.verticalCenter: parent.verticalCenter; text: "\u{F05AA}"; font.pixelSize: 17 }
             Rectangle {
                 visible: root.bat.isLaptopBattery
                 anchors.verticalCenter: parent.verticalCenter
