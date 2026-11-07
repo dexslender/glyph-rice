@@ -61,6 +61,10 @@ git clone https://github.com/Nebelung-cloud/glyph-rice ~/.local/share/glyph
 ~/.local/share/glyph/install.sh --sddm           # login theme only (sudo); run again after editing it
 ```
 
+For niri, `--links` links the repository's `config/niri` directory at
+`~/.config/niri/glyph`. Keep your own `~/.config/niri/config.kdl` and add
+`include "glyph/config.kdl"` to it manually.
+
 Without `--with` it asks which extras to add: `telegram` (`Super` `D`), `spotify` with Spicetify (`Super` `M`),
 `clash` for the VPN panel. Old configs go to `~/.dots-backup-<date>/`. Wallpapers are read from `~/Pictures/Wallpapers`,
 gifs for the home cat tile from `~/Pictures/Gifs` (pick one in prefs → home, or click the tile; none there — the cat).
@@ -68,6 +72,7 @@ gifs for the home cat tile from `~/Pictures/Gifs` (pick one in prefs → home, o
 | `config/` | goes to |
 |---|---|
 | `hypr/` | `~/.config/hypr` |
+| `niri/` | `~/.config/niri/glyph` (include it from your own `config.kdl`) |
 | `quickshell/glyph/` | `~/.config/quickshell/glyph` |
 | `quickshell/rice/` | `~/.config/quickshell/rice`, `~/.local/bin/rice` |
 | `quickshell/glyph/term/` | `starship.toml` `fastfetch/` `btop/` `cava/` `gtk-*/gtk.css` `qtengine.colors` in `~/.config` (with a Style colour — copies in `~/.local/state/rice/glyph`; edit `term/`) |

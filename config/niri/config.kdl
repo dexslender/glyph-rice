@@ -45,9 +45,8 @@ layout {
 }
 
 blur {
-	off
     passes 2
-    offset 8
+    offset 5
 }
 
 // Glyph writes the live palette and window decoration settings here.
@@ -87,7 +86,7 @@ window-rule {
     open-floating true
 }
 
-window-rule {
+/-window-rule {
     match app-id=r#"^(kitty|equibop|org\.quickshell|imv|swappy|krita|gimp|inkscape|darktable|resolve|kdenlive|shotcut|blender|godot|steam_app_(default|[0-9]+)|gamescope)$"#
     background-effect {
         xray false
@@ -106,22 +105,25 @@ window-rule {
     variable-refresh-rate true
 }
 
-window-rule {
+/-window-rule {
     match app-id=r#"^ueberzugpp_.*$"#
     open-floating true
     open-focused false
 }
 
-window-rule {
+/-window-rule {
     match app-id=r#"^win[0-9]+$"#
     exclude title=""
     opacity 1.0
 }
 
+// r#"^glyph-(island|buds|wall|clip|prefs|home|back|power|hot|charms|shot|quick|bar|cal|launcher|caffeine|vpn)$"#
+// apply blur only for launcher
 layer-rule {
-    match namespace=r#"^glyph-(island|buds|wall|clip|prefs|home|back|power|hot|charms|shot|quick|bar|cal|launcher|caffeine|vpn)$"#
+    match namespace=r#"^glyph-(launcher)$"#
     background-effect {
-        blur false
+        blur true
+        xray false
     }
 }
 
