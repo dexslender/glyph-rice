@@ -30,9 +30,9 @@ Singleton {
         sink.audio.muted = false;
         sink.audio.volume = Math.max(0, Math.min(1, v));
     }
-    // микрофон кто-то слушает — центр знака в баре краснеет
+    // микрофон кто-то слушает — отдельно от записи
     PwNodeLinkTracker { id: micUse; node: root.mic }
-    readonly property bool live: rec || micUse.linkGroups.length > 0
+    readonly property bool micInUse: micUse.linkGroups.length > 0
 
     // ---- яркость: общий с demonshot Backlight (устройство ищет brightnessctl) ----
     readonly property real bri: Backlight.value
@@ -44,14 +44,15 @@ Singleton {
     property string kbd: ""
     readonly property string layout: kbd.slice(0, 2).toLowerCase() // "English (US)" → en
 
-    // ---- запись и авиарежим: их же включают бинды hypr, поэтому опрос. Ночник — общий с demonshot, в его rules.json
-    // ponytail: pgrep раз в 3 с; станет заметно — следить за процессами через systemd-run --scope ----
+    // ---- запись и авиарежим: запись управляется процессом, авиарежим — опросом. Ночник — общий с demonshot, в его rules.json
     property bool rec: false
+    readonly property bool recording: rec || recorder.running || recDelay.running
     readonly property bool night: Rules.store.night
     property bool air: false
+    property bool stopRequested: false
     Process {
         id: poll
-        command: ["sh", "-c", "pgrep -f '^gpu-screen-recorder' >/dev/null && echo rec; "
+        command: ["sh", "-c", "pgrep -f '^gpu-screen-recorder( |$)' >/dev/null && echo rec; "
                             + "rfkill -rno SOFT | grep -qv '^blocked' || echo air"]
         stdout: StdioCollector {
             onStreamFinished: {
@@ -62,7 +63,6 @@ Singleton {
     }
     Timer { running: true; repeat: true; interval: 3000; triggeredOnStart: true; onTriggered: poll.running = true }
 
-    function sh(c) { Quickshell.execDetached(["sh", "-c", c]); }
     // настройки записи из Theme.state (quick/Rec) → флаги gpu-screen-recorder; их же берёт скриншотилка
     readonly property var recFps: [30, 60, 120]
     function recArgs() {
@@ -70,10 +70,67 @@ Singleton {
         const a = ["", "default_output", "default_input", "default_output|default_input"][st.recAudio];
         return `-f ${st.recFps} -q ${["medium", "high", "very_high", "ultra"][st.recQuality]} -cursor ${st.recCursor ? "yes" : "no"}` + (a ? ` -a "${a}"` : "");
     }
-    // второй раз — стоп. niri recording is full-screen only.
+
+    Process {
+        id: recorder
+        stderr: StdioCollector {
+            id: recorderError
+            waitForEnd: true
+        }
+        onExited: function (exitCode) {
+            root.rec = false;
+            poll.running = true;
+            const error = (recorderError.text || "").trim();
+            if (exitCode !== 0 && !root.stopRequested)
+                Quickshell.execDetached(["notify-send", "-a", "glyph", "Recording failed", error || `gpu-screen-recorder exited with ${exitCode}`]);
+            root.stopRequested = false;
+        }
+    }
+
+    Timer {
+        id: recDelay
+        property int seconds: 0
+        interval: seconds * 1000
+        onTriggered: root.launchRecording()
+    }
+
+    Process {
+        id: stopRecorder
+        command: ["pkill", "-INT", "-f", "^gpu-screen-recorder( |$)"]
+        onExited: function (exitCode) {
+            if (exitCode !== 0)
+                Quickshell.execDetached(["notify-send", "-a", "glyph", "Recording", "No active recording process was found"]);
+            poll.running = true;
+        }
+    }
+
+    // segundo clic — stop. niri recording is full-screen only.
     function toggleRec() {
-        sh(`pkill -INT -f '^gpu-screen-recorder' || exec gpu-screen-recorder -w screen ${recArgs()} -o "$(xdg-user-dir VIDEOS)/rec-$(date +%F_%H-%M-%S).mp4"`);
-        rec = !rec;
+        if (stopRecorder.running)
+            return;
+        if (recDelay.running) {
+            recDelay.stop();
+            return;
+        }
+        if (recording) {
+            root.stopRequested = true;
+            stopRecorder.running = true;
+            return;
+        }
+        root.launchRecording();
+    }
+    function startRecording(delaySeconds) {
+        if (recording || stopRecorder.running)
+            return;
+        recDelay.seconds = Math.max(0, delaySeconds || 0);
+        if (recDelay.seconds)
+            recDelay.start();
+        else
+            root.launchRecording();
+    }
+    function launchRecording() {
+        recorder.command = ["sh", "-c", `exec gpu-screen-recorder -w screen ${recArgs()} -o "$(xdg-user-dir VIDEOS)/rec-$(date +%F_%H-%M-%S).mp4"`];
+        recorder.running = true;
     }
     function toggleNight() { Rules.store.night = !night; Rules.night(); }
     function toggleAir() { Quickshell.execDetached(["rfkill", air ? "unblock" : "block", "all"]); air = !air; }

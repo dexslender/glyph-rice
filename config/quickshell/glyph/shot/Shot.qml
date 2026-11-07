@@ -46,8 +46,8 @@ Scope {
         shotRec = mode === 1;
         shotWhat = `${modes[mode]} · ${Qt.formatTime(new Date(), "hh:mm")}`;
         if (shotRec) {
-            Quickshell.execDetached(["sh", "-c", `sleep ${delay}; notify-send -a "shot · rec" "Recording." "ctrl+alt+r — стоп"; `
-                + `gpu-screen-recorder -w screen ${Sys.recArgs()} -o "$(xdg-user-dir VIDEOS)/rec-$(date +%F_%H-%M-%S).mp4"`]);
+            Quickshell.execDetached(["notify-send", "-a", "shot · rec", "Recording.", "ctrl+alt+r — стоп"]);
+            Sys.startRecording(delay);
         } else {
             Quickshell.execDetached(["niri", "msg", "action", "screenshot-screen"]);
         }

@@ -69,7 +69,7 @@ PanelWindow {
 
             WheelHandler { onWheel: e => root.goRelative(e.angleDelta.y > 0 ? -1 : 1) }
 
-            // знак: кольцо из точек, центр — красный, пока что-то пишет
+            // знак: кольцо из точек, центр красный во время записи; микрофон использует отдельный цвет
             Item {
                 id: mark
                 x: root.vert ? (parent.width - width) / 2 : 18
@@ -82,7 +82,7 @@ PanelWindow {
                     width: 9
                     height: 9
                     radius: 4.5
-                    color: !Sys.live ? Theme.fg : Qt.colorEqual(Theme.accent, Theme.fg) ? Theme.red : Theme.accent // monochrome: акцент = fg
+                    color: Sys.recording ? Theme.red : Sys.micInUse ? (Qt.colorEqual(Theme.accent, Theme.fg) ? Theme.grey : Theme.accent) : Theme.fg
                 }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.markClicked() }
             }
