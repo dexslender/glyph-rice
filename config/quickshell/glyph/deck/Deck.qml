@@ -55,8 +55,8 @@ Scope {
             implicitHeight: Math.ceil((panel.height + 14) * Theme.s)
             exclusionMode: ExclusionMode.Ignore
             color: "transparent"
-            // ponytail: Top, не Overlay — под полноэкранным окном край не ловит; Glyph-полоса прогресса рисуется поверх
-            WlrLayershell.layer: WlrLayer.Top
+            // закрыта — Top: Glyph-полоса прогресса поверх; открыта — Overlay, видна и над полноэкранным окном
+            WlrLayershell.layer: t > 0 ? WlrLayer.Overlay : WlrLayer.Top
             WlrLayershell.namespace: "glyph-deck"
             // закрыта — мышь ловит только полоса у края (углы экрана свободны), открыта — всё окно вместе со щелью под панелью
             mask: Region { y: win.open ? 0 : win.height - 2; width: win.width; height: win.open ? win.height : 2 }
@@ -309,11 +309,12 @@ Scope {
                                 wrapMode: Text.Wrap
                                 maximumLineCount: 2
                                 elide: Text.ElideRight
+                                textFormat: Text.PlainText
                                 text: Media.player?.trackTitle || "Nothing on"
                                 font { family: Theme.ui; pixelSize: 17; weight: Font.DemiBold }
                                 color: Theme.fg
                             }
-                            Text { width: parent.width; elide: Text.ElideRight; text: Media.player?.trackArtist ?? ""; font { family: Theme.ui; pixelSize: 13 } color: Theme.grey }
+                            Text { textFormat: Text.PlainText; width: parent.width; elide: Text.ElideRight; text: Media.player?.trackArtist ?? ""; font { family: Theme.ui; pixelSize: 13 } color: Theme.grey }
                         }
                     }
                     Item { width: 1; height: 16 }

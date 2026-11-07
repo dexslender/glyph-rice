@@ -88,19 +88,19 @@ PanelWindow {
             model: {
                 const out = [];
                 let r = 0, c = 0;
-                for (const id of Theme.state.widgets ?? []) {
+                for (const id of (Theme.scr ? Theme.scr(root.screen?.name, "widgets") : Theme.state.widgets) ?? []) {
                     const w = Theme.kinds[id];
                     if (!w) continue;
                     if (c + w > 3) { r++; c = 0; }
                     if (r > 2) break;
-                    out.push({ id, x: 1140 + c * 240, y: 150 + r * 240 });
+                    out.push({ id, x: c * 240, y: 150 + r * 240 });
                     c += w;
                 }
                 return out;
             }
             Loader {
                 required property var modelData
-                x: modelData.x
+                x: stage.width - 780 + modelData.x
                 y: modelData.y
                 sourceComponent: ({ weather: weatherW, calendar: calendarW, cpu: cpuW, ram: ramW, gpu: gpuW, disk: diskW,
                                     battery: batteryW, buds: budsW, player: playerW, system: systemW, cat: catW, cava: cavaW })[modelData.id] ?? null
@@ -203,6 +203,7 @@ PanelWindow {
                         width: parent.width
                         topPadding: 10
                         elide: Text.ElideRight
+                        textFormat: Text.PlainText
                         text: root.player?.trackTitle || "Nothing on"
                         font { family: Theme.ui; pixelSize: 26; weight: Font.DemiBold }
                         color: Theme.fg
@@ -210,6 +211,7 @@ PanelWindow {
                     Text {
                         width: parent.width
                         elide: Text.ElideRight
+                        textFormat: Text.PlainText
                         text: root.player?.trackArtist ?? ""
                         font { family: Theme.ui; pixelSize: 15 }
                         color: Theme.grey
@@ -227,6 +229,7 @@ PanelWindow {
             id: budsW
             W {
                 round: true
+                Notch { onNotch: d => Sys.setVol(Sys.vol + d * 0.05) } // колесо — громкость, и при наушниках: их заряд колесом не крутят
                 Ring { anchors { fill: parent; margins: 12 } f: root.buds ? root.buds.battery : Sys.vol }
                 Column {
                     anchors.centerIn: parent

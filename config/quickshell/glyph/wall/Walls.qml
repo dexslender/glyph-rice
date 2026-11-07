@@ -4,6 +4,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import qs
 import qs.components
+import qs.services
 import "../prefs"
 
 // обои: Super+Shift+W или настройки → look. Не сетка картинок — экран целиком и есть превью: выбранная собирается точками
@@ -62,10 +63,14 @@ PanelWindow {
     Behavior on t { NumberAnimation { duration: Theme.t; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.glide } }
     Binding { target: Sys; property: "wallOpen"; value: root.visible }
 
+    property string mon: ""
+    property bool own: false
     function open() {
         const s = Theme.state;
-        pick = s.wall;
-        view = s.wall;
+        mon = Niri.focusedWindow?.output || Quickshell.screens[0]?.name || "";
+        own = Quickshell.screens.length > 1 && Theme.own(mon)?.wall !== undefined;
+        pick = Theme.scr(mon, "wall");
+        view = pick;
         look = s.wallLook;
         pitch = s.wallPitch;
         bright = s.wallBright;
@@ -80,7 +85,11 @@ PanelWindow {
     function toggle() { shown ? close() : open(); }
     function apply() {
         const s = Theme.state;
-        s.wall = pick;
+        if (own) Theme.setScr(mon, "wall", pick);
+        else {
+            s.wall = pick;
+            for (const n in s.screens) if (s.screens[n].wall !== undefined) Theme.setScr(n, "wall", undefined);
+        }
         s.wallLook = look;
         s.wallPitch = pitch;
         s.wallBright = bright;
@@ -214,6 +223,7 @@ magick "$1[0]" -resize "$3" -quality 90 "$2/.$b.jpg" 2>/dev/null && mv "$2/.$b.j
             anchors { right: parent.right; rightMargin: 150 - 30 * (1 - root.t) }
             y: 110
             spacing: 30
+            Pick { visible: Quickshell.screens.length > 1; anchors.right: parent.right; label: "for"; opts: ["all", root.mon.toLowerCase()]; cur: root.own ? 1 : 0; onPicked: i => root.own = i === 1 }
             Pick { label: "look"; opts: root.looks; cur: root.look; onPicked: i => root.look = i }
             Row {
                 anchors.right: parent.right
@@ -264,7 +274,7 @@ magick "$1[0]" -resize "$3" -quality 90 "$2/.$b.jpg" 2>/dev/null && mv "$2/.$b.j
                 }
                 // живые сейчас
                 Rectangle {
-                    visible: th.modelData === Theme.state.wall
+                    visible: th.modelData === Theme.scr(root.mon, "wall")
                     anchors { horizontalCenter: parent.horizontalCenter; top: parent.bottom; topMargin: th.index === root.sel ? 36 : 22 }
                     width: 10
                     height: 10

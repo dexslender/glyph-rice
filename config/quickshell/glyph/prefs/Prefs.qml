@@ -19,10 +19,10 @@ PanelWindow {
 
     property int sel: 0
     signal wallRequested // обои — свой экран (wall/Walls), его открывает shell.qml
-    readonly property var sections: ["HOME", "DECK", "BAR", "LOOK", "STYLE", "WINDOWS", "DISPLAY", "POWER", "INPUT", "IDLE", "SHELL"]
+    readonly property var sections: ["HOME", "DECK", "BAR", "LOOK", "STYLE", "WINDOWS", "DISPLAY", "AUDIO", "POWER", "INPUT", "IDLE", "SHELL"]
     readonly property string moves: "shift ←→ move · ↵ swap · del drop · drag"
     readonly property string rings: "drag round the rings · scroll"
-    readonly property var hints: [moves, moves, moves, "", "hover to preview · ↵ or click sets it", rings, rings, "↵ or click a mode", rings, "drag the marks", ""]
+    readonly property var hints: [moves, moves, moves, "", "hover to preview · ↵ or click sets it", rings, rings, "click or ←→ a device", "↵ or click a mode", rings, "drag the marks", ""]
     readonly property var r: Rules.store
 
     // глифы видов дома, секций deck и трея бара
@@ -41,6 +41,7 @@ PanelWindow {
     property real t: shown ? 1 : 0
     Behavior on t { NumberAnimation { duration: Theme.t; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.glide } }
     function open() {
+        pickMon = Niri.focusedWindow?.output || Quickshell.screens[0]?.name || "";
         shown = true;
         stage.forceActiveFocus();
     }
@@ -51,27 +52,36 @@ PanelWindow {
         stage.forceActiveFocus(); // фокус в скрытом разделе потерялся бы
     }
 
+    // экран, который настраивают DISPLAY и HOME: открылись — тот, где фокус; его отключили — первый
+    property string pickMon
+    readonly property var names: Quickshell.screens.map(s => s.name)
+    readonly property string mon: names.includes(pickMon) ? pickMon : names[0] ?? ""
+    readonly property bool multi: names.length > 1
+    onMonChanged: home.cur = 0 // у другого экрана свой набор — курсор с прошлого мимо
+
     // ---- списки id в Theme.state: виджеты дома, секции deck, трей бара. Правим копию — JsonAdapter пишет файл на присваивание.
-    // Все возвращают новый курсор ----
+    // Все возвращают новый курсор. Виджеты — экрана mon: экранов несколько — правка даёт ему свой набор, пока не правили — общий ----
+    function list(key) { return key === "widgets" ? Theme.scr(mon, "widgets") : Theme.state[key]; }
     function edit(key, f) {
-        const a = Theme.state[key].slice();
+        const a = list(key).slice();
         f(a);
-        Theme.state[key] = a;
+        if (key === "widgets" && (multi || Theme.own(mon)?.widgets)) Theme.setScr(mon, "widgets", a);
+        else Theme.state[key] = a;
     }
     function move(key, i, to) {
-        if (to < 0 || to >= Theme.state[key].length || to === i) return i;
+        if (to < 0 || to >= list(key).length || to === i) return i;
         edit(key, a => a.splice(to, 0, a.splice(i, 1)[0]));
         return to;
     }
     function cut(key, i) {
-        const n = Theme.state[key].length;
+        const n = list(key).length;
         if (i >= n) return i;
         edit(key, a => a.splice(i, 1));
         return Math.max(0, Math.min(i, n - 2));
     }
     // ↵ на выбранном: следующий из all, которого ещё нет. В пустом списке — первый свободный
     function cycle(key, i, all) {
-        const a = Theme.state[key];
+        const a = list(key);
         if (all.every(k => a.includes(k))) return i;
         i = Math.min(i, a.length);
         let j = all.indexOf(a[i]);
@@ -81,7 +91,7 @@ PanelWindow {
     }
     // лоток: есть — убрать, нет — поставить за выбранным
     function flip(key, w, cur) {
-        const a = Theme.state[key], i = a.indexOf(w);
+        const a = list(key), i = a.indexOf(w);
         if (i >= 0) {
             edit(key, b => b.splice(i, 1));
             return Math.max(0, Math.min(i < cur ? cur - 1 : cur, a.length - 2));
@@ -92,7 +102,7 @@ PanelWindow {
     }
     // клавиши списка в фокусе: ←→ выбрать, shift ←→ переставить, ↵/пробел — сменить вид, del — убрать. -1 — клавиша не наша
     function nav(e, key, cur, all) {
-        const n = Theme.state[key].length, d = e.key === Qt.Key_Left ? -1 : e.key === Qt.Key_Right ? 1 : 0;
+        const n = list(key).length, d = e.key === Qt.Key_Left ? -1 : e.key === Qt.Key_Right ? 1 : 0;
         if (d && (e.modifiers & Qt.ShiftModifier)) return move(key, cur, cur + d);
         if (d) return n ? (cur + d + n) % n : 0;
         if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter || e.key === Qt.Key_Space) return cycle(key, cur, all);
@@ -206,8 +216,8 @@ PanelWindow {
         Page {
             id: home
             k: 0
-            caption: `home · bento 3 × 3 · ${used} of 9 cells`
-            readonly property var cells: root.pack(Theme.state.widgets)
+            caption: `home · bento 3 × 3 · ${used} of 9 cells` + (root.multi ? ` · on ${root.mon.toLowerCase()}` : "")
+            readonly property var cells: root.pack(root.list("widgets"))
             readonly property var placed: cells.filter(c => c.fits)
             readonly property var off: cells.filter(c => !c.fits)
             readonly property int used: placed.reduce((a, c) => a + c.span, 0)
@@ -341,7 +351,7 @@ PanelWindow {
             Tray {
                 ids: Object.keys(Theme.kinds)
                 icons: root.icons
-                used: Theme.state.widgets
+                used: root.list("widgets")
                 dim: home.off.map(c => c.id)
                 widths: Theme.kinds
                 onToggled: key => home.cur = root.flip("widgets", key, home.cur)
@@ -975,10 +985,18 @@ PanelWindow {
             }
         }
 
+        // ---- AUDIO: output and input — volume, mute, level, the default device (prefs/Audio) ----
+        Page {
+            id: audioPage
+            k: 7
+            caption: aud.caption
+            Audio { id: aud; live: audioPage.visible && root.shown }
+        }
+
         // ---- POWER: режимы питания (Rules.modes) — четыре круга, кольцо горит по силе, выбранный белый.
         // ultra — power saver и ещё 60 Гц, без анимаций, blur и теней поверх настроек ----
         Page {
-            k: 7
+            k: 8
             caption: `power · ${Rules.modes[Rules.mode].what} · ${Rules.hz} hz`
 
             Row {
@@ -1020,7 +1038,7 @@ PanelWindow {
         // ---- INPUT: держишь клавишу — первая точка сразу, пауза delay, дальше rate в секунду; по живым кольцам ----
         Page {
             id: inp
-            k: 8
+            k: 9
             caption: "input · keyboard · touchpad"
             property int n: 0 // сколько «напечатано»; 0 — клавиша отпущена
             Timer {
@@ -1079,7 +1097,7 @@ PanelWindow {
         // ---- IDLE: шкала минут без ввода. Точки тускнеют на каждом событии: бодр → заперт → экран погас → спит.
         // Метки тянутся вдоль, правее 60 — never ----
         Page {
-            k: 9
+            k: 10
             caption: "idle · minutes without input · swayidle"
 
             Item {
@@ -1134,7 +1152,7 @@ PanelWindow {
 
         // ---- SHELL: знак райса и имя живого шелла; переключатель — приложение Rice ----
         Page {
-            k: 10
+            k: 11
             caption: "shell · quickshell"
 
             Row {
