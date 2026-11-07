@@ -39,11 +39,6 @@ spawn-sh-at-startup "wl-paste --type image --watch cliphist store"
 spawn-at-startup "/usr/lib/geoclue-2.0/demos/agent"
 spawn-at-startup "mpris-proxy"
 
-layout {
-    gaps 15
-    background-color "transparent"
-}
-
 blur {
     passes 2
     offset 5

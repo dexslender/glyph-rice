@@ -198,14 +198,14 @@ Singleton {
     readonly property var bars: ["layout", "wifi", "bluetooth", "sound", "notes", "battery", "mode", "power", "cat"]
 
     // ---- вид всего, что вне шелла. Зовёт только shell.qml: на старте, при смене темы и цвета ----
-    // niri получает layout, focus-ring, blur и shadow через theme.kdl, а glyph пишет
-    // только значения, общие для текущей сессии.
+    // niri получает layout, focus-ring, blur и shadow через include-файлы, а glyph
+    // пишет только значения, общие для текущей сессии.
     // kitty подключает этот файл после своих цветов (include в kitty.conf); demonshot пишет туда же свою палитру
     FileView { id: kitty; path: Quickshell.env("HOME") + "/.config/demonshot/kitty.conf"; printErrors: false }
     // niri watches this include and reloads it when the live palette changes
     FileView {
         id: niriTheme
-        path: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/niri/theme.kdl"
+        path: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/niri/glyph/theme.kdl"
         printErrors: false
     }
     // 16 ANSI из концепта: пастель только терминалу. Светлая тема их переставляет (make)
@@ -218,8 +218,9 @@ Singleton {
         const border = r.game ? 1 : r.border;
         const shadowOn = Rules.shadowOn;
         const shadow = light ? "#0000002E" : "#" + hex(fg) + "1A";
-        niriTheme.setText("// glyph: escribe Theme.apply(), no editar a mano\n"
+        niriTheme.setText("// WARNING: Glyph generates this file; manual edits may be lost.\n"
             + `layout {\n`
+            + `    gaps ${r.game ? 0 : r.gaps}\n`
             + `    background-color "transparent"\n`
             + `    focus-ring {\n`
             + `        on\n`

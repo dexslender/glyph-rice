@@ -166,6 +166,14 @@ ShellRoot {
     // режим ultra включает/снимает blur и тени поверх настроек — окна перекрасить
 
     Connections {
+        function onGameChanged() {
+            Theme.apply();
+        }
+
+        function onGapsChanged() {
+            Theme.apply();
+        }
+
         function onUltraChanged() {
             Theme.apply();
         }
@@ -174,6 +182,10 @@ ShellRoot {
     }
 
     IpcHandler {
+        function game() {
+            Rules.store.game = !Rules.store.game;
+        }
+
         function launcher() {
             launcherPanel.toggle();
         }

@@ -48,8 +48,7 @@ Singleton {
             property int brightness: 62
             property bool night: false
             property int warmth: 4300
-            property int gapsIn: 6
-            property int gapsOut: 14
+            property int gaps: 15
             property int border: 2
             property int rounding: 0
             property bool blur: true

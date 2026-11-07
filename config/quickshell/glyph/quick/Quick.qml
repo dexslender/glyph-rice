@@ -209,7 +209,7 @@ PanelWindow {
                         spacing: 12
                         Rectangle {
                             id: modes
-                            width: parent.width
+                            width: parent.width - game.width - 12
                             height: 54
                             radius: Theme.corner(27)
                             color: Theme.s2
@@ -256,6 +256,17 @@ PanelWindow {
                                     HoverHandler { cursorShape: Qt.PointingHandCursor }
                                 }
                             }
+                        }
+                        Rectangle {
+                            id: game
+                            width: 54
+                            height: 54
+                            radius: 27
+                            color: Rules.store.game ? Theme.fg : Theme.s2
+                            Behavior on color { ColorAnimation { duration: Theme.t } }
+                            Icon { anchors.centerIn: parent; text: "\u{F0297}"; font.pixelSize: 22; color: Rules.store.game ? Theme.ink : Theme.fg }
+                            TapHandler { onTapped: { root.pin(); Rules.store.game = !Rules.store.game; } }
+                            HoverHandler { cursorShape: Qt.PointingHandCursor }
                         }
                     }
 

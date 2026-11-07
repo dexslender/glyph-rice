@@ -858,7 +858,7 @@ PanelWindow {
         // ---- WINDOWS: рабочий стол с двумя окнами по живым значениям колец. Анимация окон — только если motion ----
         Page {
             k: 5
-            caption: `windows · niri · gaps ${gIn.v} / ${gOut.v} · border ${bord.v} · rounding ${rnd.v} · panels ${pan.v} %`
+            caption: `windows · niri · gaps ${g.v} · border ${bord.v} · rounding ${rnd.v} · panels ${pan.v} %`
 
             Row {
                 spacing: 40
@@ -870,11 +870,11 @@ PanelWindow {
                         Rectangle {
                             id: wnd
                             required property int index
-                            readonly property real o: gOut.v * desk.k
+                            readonly property real o: g.v * desk.k
                             readonly property real l: 78 * Theme.s * desk.k + o // бар 64 + отступ 14, в логических px
-                            readonly property real w: (desk.width - (at === "top" ? o : l) - o - 2 * gIn.v * desk.k) / 2
+                            readonly property real w: (desk.width - (at === "top" ? o : l) - o - 2 * g.v * desk.k) / 2
                             readonly property string at: Theme.state.barAt
-                            x: (at !== "top" ? l : o) + (index ? w + 2 * gIn.v * desk.k : 0)
+                            x: (at !== "top" ? l : o) + (index ? w + 2 * g.v * desk.k : 0)
                             y: at === "top" ? l : o
                             width: w
                             height: desk.height - (at === "top" ? l : o) - o
@@ -917,8 +917,7 @@ PanelWindow {
 
             Row {
                 spacing: 40
-                Dial { id: gIn; label: "gaps in"; to: 30; value: root.r.gapsIn; onMoved: v => { root.r.gapsIn = v; Theme.apply(); } }
-                Dial { id: gOut; label: "gaps out"; to: 60; value: root.r.gapsOut; onMoved: v => { root.r.gapsOut = v; Theme.apply(); } }
+                Dial { id: g; label: "gaps"; to: 60; value: root.r.gaps; onMoved: v => { root.r.gaps = v; Theme.apply(); } }
                 Dial { id: bord; label: "border"; to: 6; n: 24; value: root.r.border; onMoved: v => { root.r.border = v; Theme.apply(); } }
                 Dial { id: rnd; label: "rounding"; to: 40; value: Theme.state.rounding; onMoved: v => Theme.state.rounding = v } // shell.qml сам зовёт Theme.apply
                 Dial { id: pan; label: "panels"; to: 100; step: 5; value: Theme.state.corners; onMoved: v => Theme.state.corners = v } // углы шелла, %

@@ -1,9 +1,10 @@
-// glyph: escribe Theme.apply(), no editar a mano
+// WARNING: Glyph generates this file; manual edits may be lost.
 layout {
+    gaps 15
     background-color "transparent"
     focus-ring {
         on
-        width 1
+        width 2
         active-color "#F2F2F2"
         inactive-color "#2A2A2A"
         urgent-color "#D71921"
