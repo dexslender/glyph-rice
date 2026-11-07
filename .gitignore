@@ -1,5 +1,4 @@
-# личное: свои бинды hypr и фото наушников (buds/<устройство>.png, рендер с nothing.tech)
-config/hypr/user.lua
+# личные фото наушников (buds/<устройство>.png, рендер с nothing.tech)
 config/quickshell/glyph/buds/*.png
 # fontconfig пишет его в config/fonts после fc-cache (install.sh): у каждого свой
 config/fonts/.uuid

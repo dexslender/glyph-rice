@@ -43,7 +43,7 @@ PanelWindow {
         if (/^https?:\/\/\S+$/.test(t)) return "link";
         if (/^(file:\/\/|~?\/)\S+$/.test(t)) return "file";
         // ponytail: код угадываем по скобкам и знакомым командам; промахнулись — покажется текстом
-        if (/[{};]|^(sudo|git|cd|qs|hyprctl|pacman|paru|yay|npm|cargo|systemctl|sh|bash|curl) /.test(t)) return "code";
+        if (/[{};]|^(sudo|git|cd|qs|pacman|paru|yay|npm|cargo|systemctl|sh|bash|curl) /.test(t)) return "code";
         return "text";
     }
     // картинка: [размер, формат, ширина, высота] из «[[ binary data 340 KiB png 1920x1080 ]]»

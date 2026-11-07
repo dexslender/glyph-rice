@@ -6,7 +6,7 @@ import Quickshell.Io
 import qs.settings
 import "schemes.js" as Schemes
 
-// glyph: чёрный, белые точки, один красный. Палитра, шрифты, движение, состояние (тема, тишина) и вид hypr/kitty — здесь
+// glyph: чёрный, белые точки, один красный. Палитра, шрифты, движение, состояние (тема, тишина) и вид niri/kitty — здесь
 Singleton {
     id: root
 
@@ -47,7 +47,7 @@ Singleton {
         return sc ? Math.min(sc.width / 1920, sc.height / 1080) : 1;
     }
 
-    // glide: ease-out-quart, без перелёта — как bezier glide в hypr
+    // glide: ease-out-quart, без перелёта — как bezier easing в niri
     readonly property var glide: [0.25, 1, 0.5, 1, 1, 1]
     readonly property int t: 350
 
@@ -172,7 +172,7 @@ Singleton {
             property int wallBright: 85    // %, от фона до картинки
             property string gif: ""        // гифка плитки-кота (services/Gifs), путь; пусто — первая в папке
             property string gifDir: ""     // пусто — ~/Pictures/Gifs
-            property int rounding: 20      // окна hypr
+            property int rounding: 20      // окна niri
             property int corners: 100      // углы панелей шелла, % от своих; круги остаются кругами (Theme.corner)
             property bool edges: true      // Glyph-полосы по краям (громкость/яркость, вспышки, прогресс)
             property int briSteps: 20      // яркость с клавиш: делений на шкалу, 40/20/10 — шаг 2.5/5/10 %
@@ -198,10 +198,8 @@ Singleton {
     readonly property var bars: ["layout", "wifi", "bluetooth", "sound", "notes", "battery", "mode", "power", "cat"]
 
     // ---- вид всего, что вне шелла. Зовёт только shell.qml: на старте, при смене темы и цвета ----
-    // hypr наследует demonshot: монитор, ввод, простой, ночник и движение ставит его же Rules (shell.qml), анимации — из
-    // конфига hypr. Отсюда — зазоры/рамка/blur/тени из его rules.json, а свои у glyph — цвета рамок, тени, групп, фон и
-    // скругление 20 (без них остались бы красные свечение и группы demonshot из hypr/variables.lua).
-    // Обратно к demonshot: `rice switch` делает hyprctl reload, его applyAll перекрасит
+    // niri получает layout, focus-ring, blur и shadow через theme.kdl, а glyph пишет
+    // только значения, общие для текущей сессии.
     // kitty подключает этот файл после своих цветов (include в kitty.conf); demonshot пишет туда же свою палитру
     FileView { id: kitty; path: Quickshell.env("HOME") + "/.config/demonshot/kitty.conf"; printErrors: false }
     // niri watches this include and reloads it when the live palette changes

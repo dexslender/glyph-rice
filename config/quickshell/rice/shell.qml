@@ -4,7 +4,7 @@ import Quickshell.Io
 
 // Rice — переключатель шеллов (qs -c rice, «switch shell» в Prefs glyph — когда шеллов больше одного).
 // Карточка на каждый шелл — папку в ~/.config/quickshell с rice.json, нарисованную его цветами и шрифтом.
-// ←→ выбрать, Enter или клик — `rice switch`: текущий гаснет, hypr возвращается к конфигу, поднимается выбранный
+// ←→ выбрать, Enter или клик — `rice switch`: текущий шелл гаснет, поднимается выбранный
 ShellRoot {
     id: root
 

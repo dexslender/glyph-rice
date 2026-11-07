@@ -208,7 +208,7 @@ PanelWindow {
     }
     function speed(b) { const k = b / 1024; return k >= 1000 ? [(k / 1024).toFixed(1), "mb/s"] : [k.toFixed(1), "kb/s"]; }
 
-    // ---- открытие / закрытие: сам себе анимация (у слоёв glyph в hypr no_anim) ----
+    // ---- открытие / закрытие: сам себе анимация ----
     property int cur: 0 // курсор клавиатуры по узлам
     property bool shown: false
     property real t: shown ? 1 : 0

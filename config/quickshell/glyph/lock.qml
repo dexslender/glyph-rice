@@ -6,7 +6,7 @@ import Quickshell.Wayland
 import "lock"
 
 // блокировка — отдельный процесс, как в demonshot: qs -p …/glyph/lock.qml (его зовёт `rice lock`). Разблокировались — выходим.
-// Упал шелл — лок живёт; упал лок — Hyprland держит экран закрытым, SUPER+ALT+L поднимает его заново
+// Упал шелл — лок живёт; отдельная lock surface держит экран закрытым до разблокировки
 ShellRoot {
     id: shell
     // hot-reload пересоздаёт WlSessionLock: старый умирает, процесс висит без экрана

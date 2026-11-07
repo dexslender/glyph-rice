@@ -31,7 +31,7 @@ PanelWindow {
     // открытый список: "wifi" | "bt" — под пилюлями (Picker), "rec" — под плитками (Rec), "" — ничего
     property string pick: ""
     onOpenChanged: if (open) Sys.earRun([]); else pick = ""
-    // курсор 500мс вне панели и полосы Hot — закрываем. seen: Hyprland не отдаёт курсор свежей поверхности, пока мышь не сдвинется —
+    // курсор 500мс вне панели и полосы Hot — закрываем. Новая поверхность может не получить позицию курсора до движения —
     // до первого движения неизвестно, где он, и панель ждёт (иначе у неподвижного курсора открывалась и тут же закрывалась)
     Timer { interval: 500; running: root.open && root.peeked && seen.hovered && !keep.hovered && !edge.hovered; onTriggered: root.close() }
 

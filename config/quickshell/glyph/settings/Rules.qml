@@ -39,11 +39,11 @@ Singleton {
         onAdapterUpdated: Qt.callLater(file.writeAdapter)
         onLoadFailed: err => { if (err === FileViewError.FileNotFound) this.writeAdapter(); } // первый запуск: файл с умолчаниями
 
-        // умолчания — как в hypr-конфиге сейчас, чтобы первый запуск ничего не сдвинул
+        // умолчания — как в текущей конфигурации niri, чтобы первый запуск ничего не сдвинул
         JsonAdapter {
             id: adapter
             // Display
-            property real monScale: 0      // 0 — auto, решает hypr
+            property real monScale: 0      // 0 — auto, решает niri
             property int refresh: 120
             property int brightness: 62
             property bool night: false
@@ -59,9 +59,8 @@ Singleton {
             property bool game: false    // игровой, как в caelestia: без анимаций, blur, теней, зазоров и скруглений, tearing (Theme.apply)
             // Colors
             property int palette: 0
-            property bool paintHypr: true
             property bool paintKitty: true
-            // Input — как в hyprland/input.lua
+            // Input — значения по умолчанию для niri
             property int kbSwitch: 0      // индекс в switches
             property int repeatDelay: 250
             property int repeatRate: 35
@@ -141,7 +140,7 @@ Singleton {
         }
     }
 
-    // режимы питания, как в caelestia: профиль power-profiles-daemon. ultra сверху — 60 Гц, без анимаций, blur и теней,
+    // режимы отображения: ultra сверху — 60 Гц и без анимаций, blur и теней,
     // поверх своих настроек, не трогая их: вышел — вернулись. 0 ultra · 1 saver · 2 balanced · 3 performance.
     // Окна (blur, тени) применяет вызвавший: demonshot — windows(), glyph — Theme.apply() (windows() снял бы его скругление)
     readonly property var modes: [{ name: "ultra", short: "ULT", what: `ultra · ${rates[0]} hz · still` }]

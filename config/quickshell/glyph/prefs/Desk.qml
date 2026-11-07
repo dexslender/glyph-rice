@@ -146,7 +146,7 @@ Item {
                     Mono { text: "rice"; color: root.p.ansi[4] }
                 }
                 Repeater {
-                    model: [["os", "arch linux"], ["wm", "hyprland"], ["shell", "fish"]]
+                    model: [["os", "arch linux"], ["wm", "niri"], ["shell", "fish"]]
                     Row {
                         required property var modelData
                         Mono { width: 56; text: parent.modelData[0]; color: root.p.ansi[4] }

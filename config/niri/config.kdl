@@ -1,5 +1,5 @@
 // Glyph niri configuration.
-// Hyprland remains in config/hypr; this file is the niri session counterpart.
+// This file is the compositor session configuration for Glyph.
 
 input {
     keyboard {

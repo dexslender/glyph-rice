@@ -36,7 +36,7 @@ PanelWindow {
     // круглые виджеты дома, остальные — квадрат 40. ponytail: ram/gpu/disk/battery — догадка (кольца); решит Home — поправить
     readonly property var rounds: ["weather", "cpu", "ram", "gpu", "disk", "battery", "buds", "cava"]
 
-    // ---- открытие: сам себе анимация (у слоёв glyph в hypr no_anim). Раздел помнится между открытиями ----
+    // ---- открытие: сам себе анимация. Раздел помнится между открытиями ----
     property bool shown: false
     property real t: shown ? 1 : 0
     Behavior on t { NumberAnimation { duration: Theme.t; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.glide } }
@@ -858,7 +858,7 @@ PanelWindow {
         // ---- WINDOWS: рабочий стол с двумя окнами по живым значениям колец. Анимация окон — только если motion ----
         Page {
             k: 5
-            caption: `windows · hyprland · gaps ${gIn.v} / ${gOut.v} · border ${bord.v} · rounding ${rnd.v} · panels ${pan.v} %`
+            caption: `windows · niri · gaps ${gIn.v} / ${gOut.v} · border ${bord.v} · rounding ${rnd.v} · panels ${pan.v} %`
 
             Row {
                 spacing: 40
@@ -1081,7 +1081,7 @@ PanelWindow {
         // Метки тянутся вдоль, правее 60 — never ----
         Page {
             k: 9
-            caption: "idle · minutes without input · hypridle"
+            caption: "idle · minutes without input · swayidle"
 
             Item {
                 id: line
@@ -1286,7 +1286,7 @@ PanelWindow {
     }
 
     // метка простоя: ножка до шкалы, число Doto и имя. Тянуть вдоль шкалы, ←→ — по минуте; правее 60 — never (0).
-    // Пока тянут — своё v, в rules.json и hypridle — на отпускании или через 400 мс тишины
+    // Пока тянут — своё v, в rules.json и swayidle — на отпускании или через 400 мс тишины
     component Mark: Item {
         id: mk
         property int row

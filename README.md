@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/title.svg" width="760" alt="Glyph: a Nothing OS rice for Hyprland + Quickshell">
+<img src="assets/title.svg" width="760" alt="Glyph: a Nothing OS rice for niri + Quickshell">
 
 Black, white dots, one red. A sibling of [Demon's Shot](https://github.com/Nebelung-cloud/demons-shot-rice).
 
@@ -32,11 +32,10 @@ Black, white dots, one red. A sibling of [Demon's Shot](https://github.com/Nebel
 | **Buds** | Nothing / CMF earbuds: battery, ANC | |
 | **Power** | power menu | `Super` `Esc` |
 | **Lock** | lock screen | `Super` `L` |
-| **Login** | SDDM theme: sessions on a camera dial, a Glyph tachometer that fills as you type, a staged power-on | `←` `→` |
-| **Style** | where the colour comes from, like caelestia: Nothing (black, white, red), the wallpaper (one of its tones through a Material You variant — monochrome, neutral, tonal spot, rainbow, content, fidelity, fruit salad, expressive, vibrant) or a palette — Catppuccin, Rosé Pine, Gruvbox, Nord, Dracula, Tokyo Night, Everforest, Kanagawa. Shell, Hyprland and kitty follow at once, GTK and Qt apps when they next start | launcher → style, Prefs → Style (a live mock-up of the desktop shows the palette under the cursor before you pick it) |
+| **Style** | where the colour comes from, like caelestia: Nothing (black, white, red), the wallpaper (one of its tones through a Material You variant — monochrome, neutral, tonal spot, rainbow, content, fidelity, fruit salad, expressive, vibrant) or a palette — Catppuccin, Rosé Pine, Gruvbox, Nord, Dracula, Tokyo Night, Everforest, Kanagawa. Shell, niri and kitty follow at once | launcher → style, Prefs → Style (a live mock-up of the desktop shows the palette under the cursor before you pick it) |
 | **Rice** | shell switcher, if Demon's Shot is installed too | `rice switch <name>` |
 
-Also: Hyprland (Lua), hypridle, kitty, fish, starship, fastfetch, btop, cava (dots in fish; `command cava` for bars), GTK, Qt and folder colours.
+Also: niri, kitty, fish, starship, fastfetch, btop, cava (dots in fish; `command cava` for bars), and the Glyph theme.
 
 <div align="center"><img src="assets/divider-glyph.svg" width="720" alt=""></div>
 
@@ -55,23 +54,21 @@ Also: Hyprland (Lua), hypridle, kitty, fish, starship, fastfetch, btop, cava (do
 
 ```sh
 git clone https://github.com/Nebelung-cloud/glyph-rice ~/.local/share/glyph
-~/.local/share/glyph/install.sh                  # Arch: packages, services, symlinks, login theme
+~/.local/share/glyph/install.sh                  # Arch: packages, services and symlinks
 ~/.local/share/glyph/install.sh --with telegram  # same, extras picked up front
 ~/.local/share/glyph/install.sh --links          # any distro: symlinks only
-~/.local/share/glyph/install.sh --sddm           # login theme only (sudo); run again after editing it
 ```
 
 For niri, `--links` links the repository's `config/niri` directory at
 `~/.config/niri/glyph`. Keep your own `~/.config/niri/config.kdl` and add
 `include "glyph/config.kdl"` to it manually.
 
-Without `--with` it asks which extras to add: `telegram` (`Super` `D`), `spotify` with Spicetify (`Super` `M`),
-`clash` for the VPN panel. Old configs go to `~/.dots-backup-<date>/`. Wallpapers are read from `~/Pictures/Wallpapers`,
+Without `--with` it asks which extras to add: `telegram` (`Super` `D`) or `spotify` with Spicetify (`Super` `M`).
+Old configs go to `~/.dots-backup-<date>/`. Wallpapers are read from `~/Pictures/Wallpapers`,
 gifs for the home cat tile from `~/Pictures/Gifs` (pick one in prefs → home, or click the tile; none there — the cat).
 
 | `config/` | goes to |
 |---|---|
-| `hypr/` | `~/.config/hypr` |
 | `niri/` | `~/.config/niri/glyph` (include it from your own `config.kdl`) |
 | `quickshell/glyph/` | `~/.config/quickshell/glyph` |
 | `quickshell/rice/` | `~/.config/quickshell/rice`, `~/.local/bin/rice` |
@@ -79,21 +76,10 @@ gifs for the home cat tile from `~/Pictures/Gifs` (pick one in prefs → home, o
 | `kitty/` `qtengine/` | `~/.config/…` |
 | `fish/` | `~/.config/fish` |
 | `fonts/` | `~/.local/share/fonts/glyph` |
-| `sddm/glyph/` | copied to `/usr/share/sddm/themes/glyph` (the `sddm` user can't read your home), set in `/etc/sddm.conf.d/zz-glyph.conf`; to undo, delete both |
 
-Monitor, backlight, GPU and sensors are detected. Keyboard layouts are in `hypr/hyprland/input.lua`,
-default apps in `hypr/variables.lua`. Earbuds photo: `quickshell/glyph/buds/<device-name>.png`.
-Your own binds and overrides go in `hypr/user.lua`: it's gitignored, so `git pull` never touches it.
-Apps for the special workspaces and the editor are read when you press the key, so `user.lua` can swap them:
-
-```lua
-local apps = require("variables").apps
-apps.editor = "codium"              -- Super Shift K, empty by default
-apps.todo   = "planify"             -- Super R, empty by default
-apps.music  = "spicetify watch -s"  -- Super M, spotify-launcher by default
-
-hl.bind("SUPER + G", hl.dsp.global("shell:game"))  -- game mode has no key by default
-```
+Monitor, backlight, GPU and sensors are detected by the shell. Niri keybinds and
+environment settings live in `config/niri/config.kdl`. Earbuds photo:
+`quickshell/glyph/buds/<device-name>.png`.
 
 <div align="center"><img src="assets/divider-glyph.svg" width="720" alt=""></div>
 
@@ -101,15 +87,13 @@ hl.bind("SUPER + G", hl.dsp.global("shell:game"))  -- game mode has no key by de
 
 | | |
 |---|---|
-| **Shell** | `quickshell` (Qt 6.9+) · `hyprland` 0.56+ · `hypridle` · `hyprsunset` · `xdg-desktop-portal-hyprland` · `jq` · `curl` · `python3` · `libqalculate` |
-| **System** | `sddm` 0.21+ (Qt 6 greeter) · `networkmanager` · `bluez` · `pipewire` · `pipewire-pulse` · `pipewire-alsa` · `wireplumber` · `upower` · `power-profiles-daemon` · `brightnessctl` · `libnotify` · `playerctl` · `polkit-gnome` · `gnome-keyring` · `geoclue` |
-| **Capture** | `grim` · `slurp` · `imagemagick` · `libvips` · `gpu-screen-recorder` · `cliphist` · `wl-clipboard` |
-| **Terminal** | `kitty` · `fish` · `starship` · `fastfetch` · `btop` · `cava` · `eza` · `zoxide` · `direnv` |
-| **Look** | `papirus-icon-theme` · `adw-gtk-theme` · JetBrains Mono Nerd Font · `noto-fonts-emoji` (Emoji 17) · `noto-fonts-cjk` · Bibata · `qtengine` · `darkly` |
-| **Optional** | `clash-verge-rev` · `nvidia-utils` · `ydotool` · `hyprpicker` · `swappy` · `trash-cli` |
+| **Shell** | `niri` · `quickshell` (Qt 6.9+) · `qml-niri` · `swayidle` · `gammastep` · `jq` · `curl` · `python3` · `libqalculate` |
+| **System** | `ly` · `bluez` · `pipewire` · `pipewire-pulse` · `pipewire-alsa` · `wireplumber` · `upower` · `brightnessctl` · `libnotify` · `playerctl` · `lxqt-policykit` · `geoclue` |
+| **Capture** | `imagemagick` · `libvips` · `gpu-screen-recorder` · `swappy` · `cliphist` · `wl-clipboard` |
+| **Terminal** | `kitty` · `fish` · `starship` · `fastfetch` · `btop` · `cava` · `eza` · `zoxide` |
+| **Fonts** | Glyph fonts in `config/fonts/` |
 
-From the AUR only `qtengine`, `darkly`, Bibata and Zen, plus Spicetify and Clash Verge if picked; all optional. The VPN panel expects Clash Verge in English.
-NixOS: change the `/usr/lib` agent paths in `hypr/hyprland/execs.lua` and the Papirus path in `quickshell/rice/rice`.
+From the AUR only Zen and the optional Spicetify packages are used.
 
 <div align="center"><img src="assets/divider-dots.svg" width="720" alt=""></div>
 

@@ -1,7 +1,6 @@
 # Active code map
 
-This map covers the niri path only. The legacy `config/hypr/` tree is
-intentionally preserved and is not a source for new niri behavior.
+This map covers the niri-only path.
 
 ## Compositor and shell entry points
 

@@ -3,8 +3,7 @@
 ## Project overview
 
 Glyph is a Linux desktop rice built with Quickshell/QML, fish, shell scripts,
-and compositor configuration. It was originally designed for Hyprland and is
-being migrated to niri on the `niri` branch. The goal is a Nothing OS-inspired
+and niri compositor configuration. The goal is a Nothing OS-inspired
 desktop with a bar, launcher, quick settings, dashboard, wallpaper/theme
 system, OSDs, media and hardware integrations, and a lock screen.
 
@@ -15,10 +14,8 @@ Changes may therefore be visible immediately to the running session.
 
 - Keep changes surgical and minimal. Do not refactor, rename, restyle, or
   reformat unrelated code.
-- Work on the `niri` branch for niri work.
+- Work on the `niri` branch.
 - Do not install packages or add dependencies. Use only the tools listed below.
-- Do not modify or delete `config/hypr/`; it is preserved as the legacy
-  compositor configuration.
 - Do not invent niri KDL syntax. Validate every niri configuration change.
 - Preserve existing behavior unless the task explicitly changes it.
 - Disable unsupported features cleanly: remove their UI, keybind, and runtime
@@ -36,7 +33,7 @@ python3, libqalculate, wl-clipboard, cliphist, geoclue, kitty, fish,
 starship, fastfetch, btop, cava, eza, and zoxide. The login manager is Ly.
 
 Do not assume these are installed: NetworkManager, power-profiles-daemon,
-grim, slurp, hypridle, hyprsunset, hyprpicker, polkit-gnome,
+grim, slurp, legacy compositor tools, polkit-gnome,
 gnome-keyring, SDDM, Papirus, QtEngine, Clash Verge, or the unavailable fonts
 and themes documented in `agents/NIRI_RULES.md`.
 
@@ -60,7 +57,7 @@ and themes documented in `agents/NIRI_RULES.md`.
   desktop surfaces.
 - `config/quickshell/glyph/glyph/Glyph.qml`: edge OSD/progress surfaces.
 - `config/quickshell/glyph/settings/Rules.qml`: idle and night-light rules;
-  unsupported live Hyprland controls are disabled.
+  unsupported compositor controls are disabled.
 - `config/quickshell/rice/rice`: shell start/restart/lock helper.
 - `agents/NIRI_RULES.md`: authoritative niri constraints, replacements,
   unsupported features, and package assumptions. Read this before niri work.
@@ -123,7 +120,8 @@ Super_L { spawn "qs" "-c" "glyph" "ipc" "call" "shell" "launcher"; }
 
 The corresponding target belongs in the `IpcHandler` with
 `target: "shell"` in `shell.qml`. Keep target names synchronized with
-`config/niri/config.kdl`. Do not restore Hyprland `shell:*` dispatches in the
+`config/niri/config.kdl`. Do not restore compositor-specific shell
+dispatches in the
 niri path.
 
 ## Unsupported or intentionally disabled features
@@ -132,7 +130,7 @@ The niri migration intentionally disables VPN/Clash Verge and standalone
 NetworkManager Wi-Fi UI; the unified Wi-Fi service uses iwd first and only
 falls back to Quickshell.Networking when iwd is unavailable. Region/window
 screenshot selection, region recording, power-profile
-controls, game mode, live Hyprland monitor/input/motion/compositor-border
+controls, game mode, live compositor monitor/input/motion/compositor-border
 controls, GTK/Qt/icon/cursor propagation, SDDM theme installation, and
 special workspaces. Bluetooth, UPower battery state, full-screen screenshots,
 full-screen recording, swayidle, gammastep, and niri-native actions remain.
@@ -164,22 +162,22 @@ niri msg workspaces
 Use `grim` only if it is actually available in the current environment; it is
 not part of the supported niri migration package set. For a QML warning,
 search the exact symbol first, then inspect the full component context. Remove
-stale references left by Hyprland migrations rather than adding compatibility
+stale references left by previous migrations rather than adding compatibility
 shims.
 
 ## Recent fixes and known state
 
-- `Launcher.qml` had a stale `focusT.stop()` call after the Hyprland focus
+- `Launcher.qml` had a stale `focusT.stop()` call after the compositor focus
   timer was removed; do not reintroduce `focusT`.
 - `Bar.qml` now refreshes its derived workspace list on model
   `dataChanged` and renders only the workspaces reported by niri for the
   current output.
 - `Bar.qml` uses workspace IDs for clicks and navigates dynamically with the
-  mouse wheel; do not restore the old fixed six-dot Hyprland behavior.
-- `glyph-deck` was excluded from the niri blur layer rule after it caused a
+  mouse wheel; do not restore the old fixed six-dot behavior.
+- `glyph-deck` is excluded from the niri blur layer rule after it caused a
   likely bottom rectangle/composition issue. Preserve that exclusion unless
   the namespace is re-tested.
-- The repository may contain untracked migration documentation and shared
+- The repository may contain untracked documentation and shared
   conversation exports. Do not delete or commit them unless explicitly asked.
 
 ## Editing workflow
