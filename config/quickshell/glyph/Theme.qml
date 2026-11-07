@@ -195,7 +195,7 @@ Singleton {
     // секции deck
     readonly property var decks: ["clock", "weather", "perf", "net", "media"]
     // трей бара
-    readonly property var bars: ["layout", "bluetooth", "sound", "notes", "battery", "mode", "power", "cat"]
+    readonly property var bars: ["layout", "wifi", "bluetooth", "sound", "notes", "battery", "mode", "power", "cat"]
 
     // ---- вид всего, что вне шелла. Зовёт только shell.qml: на старте, при смене темы и цвета ----
     // hypr наследует demonshot: монитор, ввод, простой, ночник и движение ставит его же Rules (shell.qml), анимации — из
@@ -204,11 +204,46 @@ Singleton {
     // Обратно к demonshot: `rice switch` делает hyprctl reload, его applyAll перекрасит
     // kitty подключает этот файл после своих цветов (include в kitty.conf); demonshot пишет туда же свою палитру
     FileView { id: kitty; path: Quickshell.env("HOME") + "/.config/demonshot/kitty.conf"; printErrors: false }
+    // niri watches this include and reloads it when the live palette changes
+    FileView {
+        id: niriTheme
+        path: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/niri/theme.kdl"
+        printErrors: false
+    }
     // 16 ANSI из концепта: пастель только терминалу. Светлая тема их переставляет (make)
     readonly property var ansi: ["#0E0E0E", "#D71921", "#9BB59A", "#D9C38A", "#8EA3C2", "#B79BC2", "#8FB8B8", "#C9C9C9",
                                  "#4A4A4A", "#F0434B", "#B5CCB4", "#E8D6A8", "#AABBD4", "#CDB6D6", "#ABCDCD", "#F2F2F2"]
 
     function apply() {
+        const r = Rules.store;
+        const radius = r.game ? 0 : st.rounding;
+        const border = r.game ? 1 : r.border;
+        const shadowOn = Rules.shadowOn;
+        const shadow = light ? "#0000002E" : "#" + hex(fg) + "1A";
+        niriTheme.setText("// glyph: escribe Theme.apply(), no editar a mano\n"
+            + `layout {\n`
+            + `    background-color "transparent"\n`
+            + `    focus-ring {\n`
+            + `        on\n`
+            + `        width ${border}\n`
+            + `        active-color "#${hex(fg)}"\n`
+            + `        inactive-color "#${hex(s3)}"\n`
+            + `        urgent-color "#${hex(red)}"\n`
+            + `    }\n`
+            + `    shadow {\n`
+            + `        ${shadowOn ? "on" : "off"}\n`
+            + `        softness 30\n`
+            + `        spread 5\n`
+            + `        offset x=0 y=5\n`
+            + `        draw-behind-window true\n`
+            + `        color "${shadow}"\n`
+            + `    }\n`
+            + `}\n`
+            + `\nwindow-rule {\n`
+            + `    geometry-corner-radius ${radius}\n`
+            + `    clip-to-geometry true\n`
+            + `}\n`);
+
         kitty.setText("# glyph: пишет Theme.apply(), руками не править\n" + [
             ["font_family", "Space Mono"], ["window_padding_width", "26 30"], ["cursor_trail", "0"],
             ["foreground", fg], ["background", s1], ["cursor", fg], ["cursor_text_color", s1],

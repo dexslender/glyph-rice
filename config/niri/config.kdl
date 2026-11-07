@@ -50,6 +50,9 @@ blur {
     offset 8
 }
 
+// Glyph writes the live palette and window decoration settings here.
+include "theme.kdl"
+
 window-rule {
     opacity 1.0
 }
@@ -133,18 +136,26 @@ layer-rule {
 }
 
 overview {
+    backdrop-color "#000000"
     workspace-shadow {
         off
     }
 }
 
+hotkey-overlay {
+    skip-at-startup
+}
+
 binds {
-    Super_L { spawn "qs" "-c" "glyph" "ipc" "call" "shell" "launcher"; }
+    Super+R { spawn "qs" "-c" "glyph" "ipc" "call" "shell" "launcher"; }
 
     Super+A { spawn "qs" "-c" "glyph" "ipc" "call" "shell" "quick"; }
     Super+Space { spawn "qs" "-c" "glyph" "ipc" "call" "shell" "altar"; }
     Super+I { spawn "qs" "-c" "glyph" "ipc" "call" "shell" "settings"; }
-    Print { spawn "qs" "-c" "glyph" "ipc" "call" "shell" "shot"; }
+    // Print { spawn "qs" "-c" "glyph" "ipc" "call" "shell" "shot"; }
+    Print { screenshot; }
+    Ctrl+Print { screenshot-screen; }
+    Alt+Print { screenshot-window; }
     Super+V { spawn "qs" "-c" "glyph" "ipc" "call" "shell" "clip"; }
     Super+Period { spawn "qs" "-c" "glyph" "ipc" "call" "shell" "charms"; }
     Super+Shift+W { spawn "qs" "-c" "glyph" "ipc" "call" "shell" "wall"; }
@@ -154,7 +165,7 @@ binds {
     Super+Q { spawn "kitty" "-1"; }
     Super+W { spawn "zen-browser"; }
     Super+E { spawn "thunar"; }
-    Super+F { fullscreen-window; }
+    Super+F { maximize-column; }
     Super+C { close-window; }
     Super+Left { focus-column-left; }
     Super+Right { focus-column-right; }

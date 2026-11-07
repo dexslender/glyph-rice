@@ -128,8 +128,10 @@ niri path.
 
 ## Unsupported or intentionally disabled features
 
-The niri migration intentionally disables VPN/Clash Verge, NetworkManager
-Wi-Fi UI, region/window screenshot selection, region recording, power-profile
+The niri migration intentionally disables VPN/Clash Verge and standalone
+NetworkManager Wi-Fi UI; the unified Wi-Fi service uses iwd first and only
+falls back to Quickshell.Networking when iwd is unavailable. Region/window
+screenshot selection, region recording, power-profile
 controls, game mode, live Hyprland monitor/input/motion/compositor-border
 controls, GTK/Qt/icon/cursor propagation, SDDM theme installation, and
 special workspaces. Bluetooth, UPower battery state, full-screen screenshots,

@@ -37,6 +37,7 @@ PanelWindow {
     readonly property int count: outputWorkspaces.length
     readonly property var top: Niri.focusedWindow
     readonly property var bat: UPower.displayDevice
+    readonly property var wifi: Wifi
 
     Connections {
         target: Niri.workspaces
@@ -173,7 +174,7 @@ PanelWindow {
             }
         }
     }
-    readonly property var parts: ({ layout: layoutC, bluetooth: btC, sound: soundC, notes: notesC, battery: batC, mode: modeC, power: powerC, cat: catC })
+    readonly property var parts: ({ layout: layoutC, wifi: wifiC, bluetooth: btC, sound: soundC, notes: notesC, battery: batC, mode: modeC, power: powerC, cat: catC })
     Component { id: layoutC; Lb { text: Sys.layout; px: 10 } }
     // кот RunCat: чем больше cpu, тем быстрее бежит (250 мс на кадр в простое, 50 на полной). cpu опрашивается, пока он в трее;
     // Binding не в делегате — уничтоженный значение не возвращает. Серый как есть, в светлой теме на белом теряется — чёрный, как buds
@@ -190,6 +191,13 @@ PanelWindow {
         }
     }
     Binding { target: SysStats; property: "cat"; value: Theme.state.bar.includes("cat") }
+    Component {
+        id: wifiC
+        Icon {
+            text: Wifi.enabled ? "\u{F05A9}" : "\u{F05AA}"
+            color: Wifi.connectedNow ? Theme.fg : Theme.grey
+        }
+    }
     Component {
         id: btC
         Icon {

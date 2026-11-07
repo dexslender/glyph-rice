@@ -111,6 +111,15 @@ PanelWindow {
                         spacing: 12
                         Item { width: 0; height: 0 }
                         Pill {
+                            on: Wifi.enabled
+                            icon: on ? "\u{F05A9}" : "\u{F05AA}"
+                            name: "Wi-Fi"
+                            sub: !on ? "off" : (Wifi.name || "no network")
+                            picked: root.pick === "wifi"
+                            onClicked: Wifi.setPowered(!Wifi.enabled)
+                            onMenu: root.pick = picked ? "" : "wifi"
+                        }
+                        Pill {
                             on: root.bt?.enabled ?? false
                             icon: on ? "\u{F00AF}" : "\u{F00B2}"
                             name: "Bluetooth"

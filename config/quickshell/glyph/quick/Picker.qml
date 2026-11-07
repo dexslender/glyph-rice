@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell.Bluetooth
 import qs
 import qs.components
+import qs.services
 
 // список под пилюлями (правый клик по Wi-Fi/Bluetooth). Сети: клик подключает и отключает, новая защищённая — строка пароля.
 // Устройства: связанные клик соединяет и разрывает, чужие — знакомит (pair). Ищет, только пока список открыт
@@ -10,9 +11,10 @@ Rectangle {
     property string kind // "wifi" | "bt" | "" — закрыт
     signal touched       // любой клик внутри — панель приколота
 
-    readonly property bool isWifi: false
+    readonly property bool isWifi: kind === "wifi"
+    readonly property var wifi: Wifi
     readonly property var bt: Bluetooth.defaultAdapter
-    readonly property bool on: bt?.enabled ?? false
+    readonly property bool on: isWifi ? wifi.enabled : bt?.enabled ?? false
 
     property var ask: null // сеть, которой нужен пароль
     property string err
@@ -24,12 +26,19 @@ Rectangle {
 
     // своя сверху, дальше сохранённые, дальше по силе. Пока вводят пароль — только та сеть: пересортировка не съест набранное
     // безымянные (только адрес) — шум эфира
+    readonly property var nets: !isWifi ? [] : wifi.networkList
+        .filter(n => n.name)
+        .sort((a, b) => b.connected - a.connected || b.known - a.known || b.signalStrength - a.signalStrength).slice(0, 6)
     readonly property var devs: kind !== "bt" || !bt ? [] : bt.devices.values.filter(d => d.paired || d.deviceName)
         .sort((a, b) => b.connected - a.connected || b.paired - a.paired).slice(0, 6)
-    readonly property var rows: !on ? [] : devs
+    readonly property var rows: !on ? [] : ask ? [ask] : isWifi ? nets : devs
 
     function btIcon(i) {
         return /audio|head/.test(i) ? "\u{F02CB}" : /mouse/.test(i) ? "\u{F037D}" : /keyboard/.test(i) ? "\u{F030C}" : /phone/.test(i) ? "\u{F03F2}" : "\u{F00AF}";
+    }
+    function bars(n) {
+        const i = Math.min(3, Math.floor(n.signalStrength * 4));
+        return ["\u{F091F}", "\u{F0922}", "\u{F0925}", "\u{F0928}"][i];
     }
     // ponytail: enterprise (EAP) сюда не пролезет — только psk; понадобится — nmcli в demonshot Settings
     function tap(o) {
@@ -40,10 +49,12 @@ Rectangle {
             if (!o.paired) { o.trusted = true; return o.pair(); }
             return o.connected ? o.disconnect() : o.connect();
         }
-        if (o.connected) return o.disconnect();
+        if (o.connected) return wifi.disconnect();
+        if (o.known || o.security === "open" || o.security === "owe") return wifi.connectNetwork(o);
+        ask = o;
     }
 
-    visible: kind === "bt"
+    visible: kind === "wifi" || kind === "bt"
     height: list.height + 32
     radius: Theme.corner(30)
     color: Theme.s2
@@ -61,9 +72,9 @@ Rectangle {
             Lb {
                 x: 4
                 anchors.verticalCenter: parent.verticalCenter
-                text: !root.on ? "bluetooth · off"
+                text: !root.on ? `${root.isWifi ? "wi-fi" : "bluetooth"} · off`
                     : root.ask ? "password"
-                    : `devices · ${root.bt?.discovering ? "searching" : root.devs.length}`
+                    : root.isWifi ? `networks · ${root.nets.length}` : `devices · ${root.bt?.discovering ? "searching" : root.devs.length}`
             }
             Lb {
                 anchors { right: parent.right; verticalCenter: parent.verticalCenter }
@@ -84,7 +95,7 @@ Rectangle {
                 required property var modelData
                 readonly property var o: modelData
                 readonly property bool on: o.connected
-                readonly property bool busy: o.pairing || o.state === BluetoothDeviceState.Connecting || o.state === BluetoothDeviceState.Disconnecting
+                readonly property bool busy: root.isWifi ? o.stateChanging : o.pairing || o.state === BluetoothDeviceState.Connecting || o.state === BluetoothDeviceState.Disconnecting
                 width: list.width
                 height: 56
                 radius: Theme.corner(28)
@@ -100,7 +111,7 @@ Rectangle {
                     color: row.on ? Theme.fg : Theme.s3
                     Icon {
                         anchors.centerIn: parent
-                        text: root.btIcon(row.o.icon)
+                        text: root.isWifi ? root.bars(row.o) : root.btIcon(row.o.icon)
                         font.pixelSize: 19
                         color: row.on ? Theme.ink : Theme.fg
                         // идёт соединение — иконка дышит
@@ -118,14 +129,16 @@ Rectangle {
                     Text { width: parent.width; elide: Text.ElideRight; text: row.o.name || row.o.address; font { family: Theme.ui; pixelSize: 15; weight: Font.DemiBold } color: Theme.fg }
                     Lb {
                         px: 10
-                        text: (row.o.pairing ? "pairing" : row.o.state === BluetoothDeviceState.Connecting ? "connecting" : row.o.state === BluetoothDeviceState.Disconnecting ? "disconnecting"
+                        text: root.isWifi
+                            ? `${row.on ? "connected" : row.busy ? "connecting" : row.o.known ? "saved" : row.o.security} · ${Math.round(row.o.signalStrength * 100)}%`
+                            : (row.o.pairing ? "pairing" : row.o.state === BluetoothDeviceState.Connecting ? "connecting" : row.o.state === BluetoothDeviceState.Disconnecting ? "disconnecting"
                                : row.on ? "connected" : row.o.paired ? "paired" : "pair") + (row.o.batteryAvailable ? ` · ${Math.round(row.o.battery * 100)}%` : "")
                     }
                 }
                 HoverHandler { id: hov; cursorShape: Qt.PointingHandCursor }
                 TapHandler { onTapped: root.tap(row.o) }
                 // правый клик по сохранённой — забыть
-                TapHandler { acceptedButtons: Qt.RightButton; onTapped: { root.touched(); if (row.o.known || row.o.paired) row.o.forget(); } }
+                TapHandler { acceptedButtons: Qt.RightButton; onTapped: { root.touched(); if (root.isWifi) root.wifi.forgetNetwork(row.o); else if (row.o.known || row.o.paired) row.o.forget(); } }
             }
         }
 
@@ -152,7 +165,7 @@ Rectangle {
             }
             Rectangle {
                 id: go
-                function send() { root.touched(); root.ask.connectWithPsk(pw.text); pw.text = ""; root.ask = null; }
+                function send() { root.touched(); root.wifi.connectNetwork(root.ask, pw.text); pw.text = ""; root.ask = null; }
                 anchors { right: parent.right; rightMargin: 6; verticalCenter: parent.verticalCenter }
                 width: 44
                 height: 44
@@ -168,7 +181,7 @@ Rectangle {
             x: 4
             topPadding: 4
             bottomPadding: 4
-            text: "nothing nearby"
+            text: root.isWifi ? "scanning…" : "nothing nearby"
         }
     }
 }

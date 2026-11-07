@@ -1,0 +1,24 @@
+// glyph: escribe Theme.apply(), no editar a mano
+layout {
+    background-color "transparent"
+    focus-ring {
+        on
+        width 1
+        active-color "#F2F2F2"
+        inactive-color "#2A2A2A"
+        urgent-color "#D71921"
+    }
+    shadow {
+        off
+        softness 30
+        spread 5
+        offset x=0 y=5
+        draw-behind-window true
+        color "#F2F2F21A"
+    }
+}
+
+window-rule {
+    geometry-corner-radius 16
+    clip-to-geometry true
+}
