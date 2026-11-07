@@ -192,7 +192,7 @@ PanelWindow {
                         Tile { icon: "\u{F001D}"; name: "airplane"; on: Sys.air; onClicked: Sys.toggleAir() }
                         Tile { icon: "\u{F0176}"; name: "caffeine"; on: Sys.caffeine; onClicked: Sys.caffeine = !Sys.caffeine }
                         Tile { icon: on ? "\u{F036C}" : "\u{F036D}"; name: "mic"; on: Sys.micOn; onClicked: Sys.toggleMic() }
-                        Tile { icon: "\u{F044A}"; name: "record"; on: Sys.recording; picked: root.pick === "rec"; onClicked: { root.close(); Sys.toggleRec(); } onMenu: root.pick = picked ? "" : "rec" }
+                        Tile { icon: "\u{F044A}"; name: "record"; on: Sys.rec; picked: root.pick === "rec"; onClicked: { root.close(); Sys.toggleRec(); } onMenu: root.pick = picked ? "" : "rec" }
                         Tile { icon: "\u{F050E}"; name: "dark"; on: !Theme.light; onClicked: Theme.setLight(!Theme.light) }
                     }
 
@@ -280,8 +280,8 @@ PanelWindow {
                         Art { id: mart; x: 12; anchors.verticalCenter: parent.verticalCenter; width: 62; height: 62; step: 4; url: Media.player?.trackArtUrl ?? "" }
                         Column {
                             anchors { left: mart.right; leftMargin: 16; right: mctl.left; rightMargin: 16; verticalCenter: parent.verticalCenter }
-                            Text { width: parent.width; elide: Text.ElideRight; text: Media.player?.trackTitle || "Nothing on"; font { family: Theme.ui; pixelSize: 16; weight: Font.DemiBold } color: Theme.fg }
-                            Text { width: parent.width; elide: Text.ElideRight; text: Media.player?.trackArtist ?? ""; font { family: Theme.ui; pixelSize: 13 } color: Theme.grey }
+                            Text { textFormat: Text.PlainText; width: parent.width; elide: Text.ElideRight; text: Media.player?.trackTitle || "Nothing on"; font { family: Theme.ui; pixelSize: 16; weight: Font.DemiBold } color: Theme.fg }
+                            Text { textFormat: Text.PlainText; width: parent.width; elide: Text.ElideRight; text: Media.player?.trackArtist ?? ""; font { family: Theme.ui; pixelSize: 13 } color: Theme.grey }
                         }
                         Controls { id: mctl; anchors { right: parent.right; rightMargin: 18; verticalCenter: parent.verticalCenter } size: 20; play: 44 }
                     }
@@ -304,7 +304,10 @@ PanelWindow {
                     ListView {
                         id: notes
                         width: parent.width
-                        height: Math.min(contentHeight, stage.height - 28 - 44 - y)
+                        height: Math.min(shown, stage.height - 28 - 44 - y)
+                        // плавно — по контенту (clear all, dismiss); потолок сразу: Picker или плеер выше не выталкивают шапку за экран
+                        property real shown: contentHeight
+                        Behavior on shown { enabled: Rules.moving; NumberAnimation { duration: Theme.t; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.glide } }
                         clip: true
                         spacing: 10
                         model: Notes.list.slice().reverse()
@@ -345,7 +348,7 @@ PanelWindow {
                                 y: 16
                                 width: parent.width - x - 18
                                 Lb { width: parent.width; elide: Text.ElideRight; text: `${n.appName || "app"} · ${Notes.ago(n, clock.date.getTime())}`; px: 11 }
-                                Text { width: parent.width; elide: Text.ElideRight; text: n.summary; font { family: Theme.ui; pixelSize: 15; weight: Font.DemiBold } color: Theme.fg }
+                                Text { textFormat: Text.PlainText; width: parent.width; elide: Text.ElideRight; text: n.summary; font { family: Theme.ui; pixelSize: 15; weight: Font.DemiBold } color: Theme.fg }
                                 Text {
                                     width: parent.width
                                     visible: !!n.body
@@ -425,6 +428,7 @@ PanelWindow {
             Text {
                 width: parent.width
                 elide: Text.ElideRight
+                textFormat: Text.PlainText
                 text: pill.sub
                 font { family: Theme.mono; pixelSize: 11; letterSpacing: 0.9; capitalization: Font.AllUppercase }
                 color: pill.on ? Theme.ink : Theme.fg
@@ -507,11 +511,20 @@ PanelWindow {
         MouseArea {
             id: area
             property real v
+            property real wacc: 0
             anchors.fill: parent
             preventStealing: true
             function set(x) { v = Math.max(0, Math.min(1, x / width)); sl.moved(v); }
-            onPressed: e => { root.pin(); set(e.x); }
+            onPressed: e => set(e.x)
             onPositionChanged: e => set(e.x)
+            onReleased: root.pin()
+            onWheel: e => {
+                wacc += (e.inverted ? -1 : 1) * (e.angleDelta.y || -e.angleDelta.x) / 120 * 0.05 * (e.phase === Qt.NoScrollPhase ? 1 : 0.25);
+                if (Math.abs(wacc) < 0.02)
+                    return;
+                sl.moved(Math.max(0, Math.min(1, sl.shown + wacc)));
+                wacc = 0;
+            }
         }
     }
 }

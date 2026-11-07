@@ -30,9 +30,9 @@ Singleton {
         sink.audio.muted = false;
         sink.audio.volume = Math.max(0, Math.min(1, v));
     }
-    // микрофон кто-то слушает — отдельно от записи
+    // микрофон кто-то слушает — центр знака в баре краснеет
     PwNodeLinkTracker { id: micUse; node: root.mic }
-    readonly property bool micInUse: micUse.linkGroups.length > 0
+    readonly property bool live: rec || micUse.linkGroups.length > 0
 
     // ---- яркость: общий с demonshot Backlight (устройство ищет brightnessctl) ----
     readonly property real bri: Backlight.value
@@ -44,15 +44,13 @@ Singleton {
     property string kbd: ""
     readonly property string layout: kbd.slice(0, 2).toLowerCase() // "English (US)" → en
 
-    // ---- запись и авиарежим: запись управляется процессом, авиарежим — опросом. Ночник — общий с demonshot, в его rules.json
+    // ---- запись и авиарежим: их же включают бинды, поэтому опрос. Ночник — общий с demonshot, в его rules.json
     property bool rec: false
-    readonly property bool recording: rec || recorder.running || recDelay.running
     readonly property bool night: Rules.store.night
     property bool air: false
-    property bool stopRequested: false
     Process {
         id: poll
-        command: ["sh", "-c", "pgrep -f '^gpu-screen-recorder( |$)' >/dev/null && echo rec; "
+        command: ["sh", "-c", "pgrep -f '^gpu-screen-recorder' >/dev/null && echo rec; "
                             + "rfkill -rno SOFT | grep -qv '^blocked' || echo air"]
         stdout: StdioCollector {
             onStreamFinished: {
@@ -63,6 +61,7 @@ Singleton {
     }
     Timer { running: true; repeat: true; interval: 3000; triggeredOnStart: true; onTriggered: poll.running = true }
 
+    function sh(c) { Quickshell.execDetached(["sh", "-c", c]); }
     // настройки записи из Theme.state (quick/Rec) → флаги gpu-screen-recorder; их же берёт скриншотилка
     readonly property var recFps: [30, 60, 120]
     function recArgs() {
@@ -71,66 +70,10 @@ Singleton {
         return `-f ${st.recFps} -q ${["medium", "high", "very_high", "ultra"][st.recQuality]} -cursor ${st.recCursor ? "yes" : "no"}` + (a ? ` -a "${a}"` : "");
     }
 
-    Process {
-        id: recorder
-        stderr: StdioCollector {
-            id: recorderError
-            waitForEnd: true
-        }
-        onExited: function (exitCode) {
-            root.rec = false;
-            poll.running = true;
-            const error = (recorderError.text || "").trim();
-            if (exitCode !== 0 && !root.stopRequested)
-                Quickshell.execDetached(["notify-send", "-a", "glyph", "Recording failed", error || `gpu-screen-recorder exited with ${exitCode}`]);
-            root.stopRequested = false;
-        }
-    }
-
-    Timer {
-        id: recDelay
-        property int seconds: 0
-        interval: seconds * 1000
-        onTriggered: root.launchRecording()
-    }
-
-    Process {
-        id: stopRecorder
-        command: ["pkill", "-INT", "-f", "^gpu-screen-recorder( |$)"]
-        onExited: function (exitCode) {
-            if (exitCode !== 0)
-                Quickshell.execDetached(["notify-send", "-a", "glyph", "Recording", "No active recording process was found"]);
-            poll.running = true;
-        }
-    }
-
-    // segundo clic — stop. niri recording is full-screen only.
+    // второй раз — стоп. niri recording is full-screen only (-w screen)
     function toggleRec() {
-        if (stopRecorder.running)
-            return;
-        if (recDelay.running) {
-            recDelay.stop();
-            return;
-        }
-        if (recording) {
-            root.stopRequested = true;
-            stopRecorder.running = true;
-            return;
-        }
-        root.launchRecording();
-    }
-    function startRecording(delaySeconds) {
-        if (recording || stopRecorder.running)
-            return;
-        recDelay.seconds = Math.max(0, delaySeconds || 0);
-        if (recDelay.seconds)
-            recDelay.start();
-        else
-            root.launchRecording();
-    }
-    function launchRecording() {
-        recorder.command = ["sh", "-c", `exec gpu-screen-recorder -w screen ${recArgs()} -o "$(xdg-user-dir VIDEOS)/rec-$(date +%F_%H-%M-%S).mp4"`];
-        recorder.running = true;
+        sh(`pkill -INT -f '^gpu-screen-recorder' || exec gpu-screen-recorder -w screen ${recArgs()} -o "$(xdg-user-dir VIDEOS)/rec-$(date +%F_%H-%M-%S).mp4"`);
+        rec = !rec;
     }
     function toggleNight() { Rules.store.night = !night; Rules.night(); }
     function toggleAir() { Quickshell.execDetached(["rfkill", air ? "unblock" : "block", "all"]); air = !air; }
@@ -158,6 +101,21 @@ Singleton {
         stdout: StdioCollector { onStreamFinished: { try { root.ear = JSON.parse(text); } catch (e) { root.ear = null; } } }
         onExited: if (root.earNext) { command = root.earNext; root.earNext = null; running = true; }
     }
+
+    // ---- Bluetooth сам не переподключает устройства, когда адаптер включили обратно (пилюля, авиарежим, rfkill).
+    // BlueZ сначала рвёт соединения и только потом гасит адаптер (Connected:false за 40–90 мс до Powered:false), так что
+    // снимок в момент выключения пуст. Поэтому список подключённых пишем с задержкой: выключение её отменяет, и в
+    // btResume остаётся то, что было до. Отключил сам или наушники убрали в кейс — через полсекунды список это примет ----
+    readonly property var btOn: Bluetooth.devices.values.filter(d => d.connected).map(d => d.address)
+    property var btResume: []
+    onBtOnChanged: btKeep.restart()
+    Timer { id: btKeep; interval: 500; running: true; onTriggered: if (Bluetooth.defaultAdapter?.enabled && !btResumeT.running) root.btResume = root.btOn }
+    Connections {
+        target: Bluetooth.defaultAdapter
+        function onEnabledChanged() { if (Bluetooth.defaultAdapter.enabled) btResumeT.restart(); else { btKeep.stop(); btResumeT.stop(); } }
+    }
+    // адаптеру нужно время после включения
+    Timer { id: btResumeT; interval: 1500; onTriggered: { for (const d of Bluetooth.devices.values) if (root.btResume.includes(d.address) && !d.connected) d.connect(); } }
 
     // ---- кофеин: не спать. Ингибитору нужно живое окно — невидимое 0×0, как в demonshot ----
     property bool caffeine: false

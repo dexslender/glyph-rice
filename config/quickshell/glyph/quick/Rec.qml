@@ -38,8 +38,8 @@ Rectangle {
             Row {
                 anchors.centerIn: parent
                 spacing: 10
-                Rectangle { visible: Sys.recording; anchors.verticalCenter: parent.verticalCenter; width: 10; height: 10; radius: 5; color: Theme.accent }
-                Lb { anchors.verticalCenter: parent.verticalCenter; text: Sys.recording ? "stop recording" : "start recording"; color: Theme.ink }
+                Rectangle { visible: Sys.rec; anchors.verticalCenter: parent.verticalCenter; width: 10; height: 10; radius: 5; color: Theme.accent }
+                Lb { anchors.verticalCenter: parent.verticalCenter; text: Sys.rec ? "stop recording" : "start recording"; color: Theme.ink }
             }
             TapHandler { onTapped: root.start() }
             HoverHandler { cursorShape: Qt.PointingHandCursor }

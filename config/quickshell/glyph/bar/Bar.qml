@@ -67,7 +67,7 @@ PanelWindow {
             color: Theme.s1
             border { width: 1; color: Theme.s2 }
 
-            WheelHandler { onWheel: e => root.goRelative(e.angleDelta.y > 0 ? -1 : 1) }
+            Notch { onNotch: d => root.goRelative(d > 0 ? -1 : 1) }
 
             // знак: кольцо из точек, центр красный во время записи; микрофон использует отдельный цвет
             Item {
@@ -209,7 +209,7 @@ PanelWindow {
         id: soundC
         Icon {
             text: Sys.muted ? "\u{F075F}" : "\u{F057E}"
-            WheelHandler { onWheel: e => Sys.setVol(Sys.vol + (e.angleDelta.y > 0 ? 0.05 : -0.05)) }
+            Notch { onNotch: d => Sys.setVol(Sys.vol + d * 0.05) }
         }
     }
     Component {
