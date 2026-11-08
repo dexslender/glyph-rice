@@ -1,17 +1,17 @@
 import QtQuick
 import Quickshell
-import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
 import qs
 import qs.components
+import qs.services
 
 // лаунчер: тап Super или Super+Space. Панель 860 по центру, экран гаснет до 74%. Поиск-пилюля с красной кареткой,
 // режимы чипами (Tab): apps / style / windows / calc. Без запроса — «recent» и все приложения сеткой по 6, справа алфавит.
 // style — цвет, как scheme в caelestia: откуда (nothing, обои, палитра), под ним — тона обоев и варианты (tonal spot…) или палитры
 // (catppuccin, rosé pine…), тема (Theme.styles, те же, что STYLE в настройках). Кружки — образцы, точка — что стоит,
 // ↵ ставит и лаунчер не закрывает. При палитрах поиск — и по группе: «catppuccin».
-// Появляется как Charms и Clip: подъём на 24 и fade. Иконки — иконки темы точками в кругах; выбранная — белый круг
+// Появляется как Charms и Clip: подъём на 24 и fade. Иконки — монохромные глифы в кругах, неизвестные — сама иконка точками; выбранная — белый круг
 PanelWindow {
     id: root
 
@@ -21,8 +21,16 @@ PanelWindow {
     readonly property string query: input.text
     property var uses: ({}) // id приложения → сколько раз открыли
 
-    // иконка темы или путь из .desktop; нет её (или файла) — общий значок приложения, а не пустой круг
-    function icon(name) { return Quickshell.iconPath(name || "application-x-executable", "application-x-executable"); }
+    // глифы для известных приложений; ключ — кусок id/имени в нижнем регистре
+    readonly property var glyphs: [
+        ["zen", "\u{F0239}"], ["firefox", "\u{F0239}"], ["chrom", "\u{F059F}"], ["kitty", "\u{F018D}"], ["foot", "\u{F018D}"],
+        ["spotify", "\u{F04C7}"], ["telegram", "\u{F2C6}"], ["codium", "\u{F0A1E}"], ["code", "\u{F0A1E}"], ["steam", "\u{F04D3}"],
+        ["discord", "\u{F066F}"], ["vesktop", "\u{F066F}"], ["equibop", "\u{F066F}"], ["calculator", "\u{F00EC}"], ["calendar", "\u{F00ED}"],
+        ["camera", "\u{F0100}"], ["thunar", "\u{F024B}"], ["nautilus", "\u{F024B}"], ["files", "\u{F024B}"], ["gimp", "\u{F02E9}"],
+        ["mail", "\u{F01EE}"], ["btop", "\u{F035B}"], ["monitor", "\u{F035B}"], ["obsidian", "\u{F082E}"], ["settings", "\u{F0493}"],
+        ["pavucontrol", "\u{F057E}"], ["mpv", "\u{F040A}"], ["vlc", "\u{F040A}"], ["clash", "\u{F0483}"], ["torrent", "\u{F01DA}"]
+    ]
+    function glyph(key) { return glyphs.find(g => key.toLowerCase().includes(g[0]))?.[1] ?? ""; }
 
     // на старте DesktopEntries добавляет записи по одной (~160 valuesChanged): биндинг пересобирал бы сетку на каждую —
     // секунды фриза. Собираем раз, когда список затих
@@ -32,7 +40,7 @@ PanelWindow {
         interval: 300
         running: true
         onTriggered: root.apps = DesktopEntries.applications.values.filter(e => !e.noDisplay).map(e => ({
-            id: e.id, name: e.name, src: root.icon(e.icon),
+            id: e.id, name: e.name, src: e.icon ? Quickshell.iconPath(e.icon, true) : "", glyph: root.glyph(`${e.id} ${e.name}`),
             extra: `${e.id} ${e.genericName} ${(e.keywords ?? []).join(" ")}`.toLowerCase(), run: () => e.execute()
         })).sort((a, b) => a.name.localeCompare(b.name))
     }
@@ -41,20 +49,12 @@ PanelWindow {
         function onValuesChanged() { appsT.restart(); }
     }
     // окна — только пока открыт режим windows: иначе любая смена заголовка пересобирала бы список
-    readonly property var wins: !visible || mode !== 2 ? [] : Hyprland.toplevels.values.map(t => {
-        const cls = t.lastIpcObject?.class ?? "";
-        return { name: t.title, src: icon(DesktopEntries.heuristicLookup(cls)?.icon), extra: cls.toLowerCase(),
-                 run: () => { focusT.addr = t.address; focusT.restart(); } };
-    })
-    // пока лаунчер держит клавиатуру (Exclusive), Hyprland переключит воркспейс, но фокус окну не даст — а отпустив
-    // клавиатуру, вернёт прежнее окно с его воркспейсом. Поэтому фокус — когда отпустили (уходит со следующим кадром).
-    // ponytail: 100 мс — запас на кадр; не хватит — фокусировать по onVisibleChanged, после fade
-    Timer {
-        id: focusT
-        property string addr
-        interval: 100
-        onTriggered: Hyprland.dispatch(`hl.dsp.focus({ window = "address:0x${addr}" })`) // Quickshell даёт адрес без 0x
-    }
+    readonly property var wins: !visible || mode !== 2 || !Niri.focusedWindow ? [] : (() => {
+        const w = Niri.focusedWindow;
+        const icon = DesktopEntries.heuristicLookup(w.appId)?.icon;
+        return [{ name: w.title, src: icon ? Quickshell.iconPath(icon, true) : "", glyph: glyph(w.appId), extra: w.appId.toLowerCase(),
+                  run: () => Niri.focusWindow(w.id) }];
+    })()
 
     // подпоследовательность: начало слова и подряд — выше. hl — индексы совпавших букв
     function match(s, q) {
@@ -108,7 +108,6 @@ PanelWindow {
     Behavior on t { NumberAnimation { duration: Theme.t; easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.glide } }
 
     function open() {
-        focusT.stop(); // окно из прошлого открытия не перехватит фокус у лаунчера
         input.text = "";
         mode = 0;
         sel = 0;
@@ -380,9 +379,16 @@ PanelWindow {
             Rectangle { visible: cell.on && !!cell.modelData.fill; anchors.centerIn: parent; width: 104; height: 104; radius: 52; color: "transparent"; border { width: 2; color: Theme.fg } }
             Rectangle { id: inner; visible: !!cell.modelData.dot; anchors.centerIn: parent; width: 40; height: 40; radius: 20; color: cell.modelData.dot ?? "transparent" }
             Rectangle { visible: !!cell.modelData.now; anchors.centerIn: parent; width: 14; height: 14; radius: 7; color: Theme.on(inner.visible ? inner.color : disc.color) }
+            Icon {
+                anchors.centerIn: parent
+                visible: !!cell.modelData.glyph
+                text: cell.modelData.glyph ?? ""
+                font.pixelSize: 36
+                color: cell.on ? Theme.ink : Theme.fg
+            }
             Image {
                 anchors.centerIn: parent
-                visible: status === Image.Ready
+                visible: !cell.modelData.glyph && status === Image.Ready
                 width: 44
                 height: 44
                 source: cell.near ? cell.modelData.src ?? "" : ""
