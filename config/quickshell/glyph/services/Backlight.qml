@@ -37,8 +37,8 @@ Singleton {
         moved();
     }
     Timer { id: sync; interval: 300; onTriggered: root.read() }
-    GlobalShortcut { appid: "shell"; name: "briUp"; description: "яркость +"; onPressed: root.step(1) }
-    GlobalShortcut { appid: "shell"; name: "briDown"; description: "яркость −"; onPressed: root.step(-1) }
+    // клавишас яркости: IpcHandler "shell" (shell.qml) → briUp()/briDown() → root.step(). GlobalShortcut (hyprland_global_shortcuts_v1)
+    // solo funciona con Hyprland — este fork es niri-only, por eso no se usa aquí
 
     FileView { id: cur; path: root.dev ? root.dev + "/brightness" : ""; blockAllReads: true; printErrors: false }
     FileView { id: max; path: root.dev ? root.dev + "/max_brightness" : ""; blockLoading: true; printErrors: false }
