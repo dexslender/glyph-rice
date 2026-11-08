@@ -6,12 +6,30 @@ import Quickshell.Services.UPower
 import Quickshell.Wayland
 import qs
 import qs.components
+import qs.services
 
 // Glyph: края экрана как светодиоды на спинке, вместо OSD и попапов посреди экрана.
 // Сверху — вспышка на уведомление (у критических красная) и «остров» с ним, справа — громкость/яркость снизу вверх,
 // снизу — прогресс долгих задач (уведомления с hint value) или фокус-таймера (Focus). Гаснут через 3 с
 Scope {
     id: root
+
+    // вспышка и остров — под баром, если он сверху и есть на экране в фокусе (там они и встают). Экран в фокусе — вывод
+    // воркспейса с isFocused (у niri нет отдельного «focusedMonitor», как у Hyprland)
+    property int workspaceRevision: 0
+    Connections {
+        target: Niri.workspaces
+        function onDataChanged() { root.workspaceRevision++; }
+    }
+    readonly property string focusedOutput: {
+        workspaceRevision;
+        for (let i = 0; i < Niri.workspaces.count; i++) {
+            const w = Niri.workspaces.get(i);
+            if (w.isFocused) return w.output;
+        }
+        return "";
+    }
+    readonly property bool underBar: Theme.state.barAt === "top" && Theme.scr(root.focusedOutput, "bar")
 
     // ---- справа: громкость и яркость ----
     property string kind: "vol"
@@ -100,7 +118,7 @@ Scope {
         id: top
         shown: !!root.note && Theme.state.edges
         anchors.top: true
-        margins.top: Theme.state.barAt === "top" ? Math.ceil(78 * Theme.s) : 0 // под баром
+        margins.top: root.underBar ? Math.ceil(78 * Theme.s) : 0
         implicitWidth: Math.ceil(640 * Theme.s)
         implicitHeight: Math.ceil(30 * Theme.s)
         Seg {
@@ -129,7 +147,7 @@ Scope {
     PanelWindow {
         visible: stack.count > 0
         anchors.top: true
-        margins.top: Theme.state.barAt === "top" ? Math.ceil(78 * Theme.s) : 0 // под баром
+        margins.top: root.underBar ? Math.ceil(78 * Theme.s) : 0
         implicitWidth: Math.ceil(600 * Theme.s)
         implicitHeight: Math.ceil((24 + root.most * 132) * Theme.s)
         exclusionMode: ExclusionMode.Ignore
@@ -222,6 +240,7 @@ Scope {
                                         topPadding: 2
                                         elide: Text.ElideRight
                                         text: c.summary
+                                        textFormat: Text.PlainText
                                         font { family: Theme.ui; pixelSize: 17; weight: Font.DemiBold }
                                         color: Theme.fg
                                     }
